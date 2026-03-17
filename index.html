@@ -2174,13 +2174,25 @@ async function likeFeedback(id) {
     showToast('Login to like feedback');
     return;
   }
+  // Optimistic update
+  const msg = feedbackList.find(m => m.id === id);
+  if (msg) {
+    msg.user_liked = !msg.user_liked;
+    msg.like_count += msg.user_liked ? 1 : -1;
+    renderFeedback();
+  }
   try {
     await fbApi('feedback-like', {
       method: 'POST',
       body: JSON.stringify({ feedback_id: id })
     });
-    await loadFeedback();
   } catch (err) {
+    // Revert on error
+    if (msg) {
+      msg.user_liked = !msg.user_liked;
+      msg.like_count += msg.user_liked ? 1 : -1;
+      renderFeedback();
+    }
     showToast(err.message);
   }
 }
@@ -2211,6 +2223,14 @@ async function adminAction(action, feedbackId, targetUserId) {
   if (action === 'delete' && !confirm('Delete this feedback?')) return;
   if (action === 'ban_user' && !confirm('Ban this user?')) return;
 
+  // Optimistic update
+  if (action === 'dev_heart') {
+    const msg = feedbackList.find(m => m.id === feedbackId);
+    if (msg) { msg.dev_hearted = !msg.dev_hearted; renderFeedback(); }
+  } else if (action === 'delete') {
+    feedbackList = feedbackList.filter(m => m.id !== feedbackId);
+    renderFeedback();
+  }
   try {
     await fbApi('feedback-admin', {
       method: 'POST',
@@ -2220,9 +2240,10 @@ async function adminAction(action, feedbackId, targetUserId) {
         target_user_id: targetUserId
       })
     });
-    await loadFeedback();
+    if (action === 'ban_user') await loadFeedback();
     showToast(action === 'delete' ? 'Deleted' : action === 'dev_heart' ? 'Updated' : 'User banned');
   } catch (err) {
+    await loadFeedback(); // Revert by reloading
     showToast(err.message);
   }
 }
