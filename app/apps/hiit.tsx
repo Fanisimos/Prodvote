@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Colors from '../../constants/Colors';
+import { useTheme } from '../../lib/ThemeContext';
 
 interface Preset {
   id: string;
@@ -36,6 +37,9 @@ const DEFAULT_PRESETS: Preset[] = [
 type Phase = 'idle' | 'countdown' | 'work' | 'rest' | 'done';
 
 export default function HIITScreen() {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
+
   const [presets, setPresets] = useState<Preset[]>(DEFAULT_PRESETS);
   const [selected, setSelected] = useState<Preset>(DEFAULT_PRESETS[0]);
   const [customWork, setCustomWork] = useState('30');
@@ -168,7 +172,7 @@ export default function HIITScreen() {
 
   const bgColor = bgAnim.interpolate({
     inputRange: [0, 1, 2],
-    outputRange: [Colors.dark.background, '#7f1d1d', '#064e3b'],
+    outputRange: [colors.background, '#7f1d1d', '#064e3b'],
   });
 
   function formatTime(s: number) {
@@ -310,7 +314,7 @@ export default function HIITScreen() {
                 </Text>
                 <Text style={styles.presetDot}>·</Text>
                 <Text style={styles.presetDetail}>
-                  <Text style={{ fontWeight: '800', color: Colors.dark.text }}>{p.rounds}</Text> rounds
+                  <Text style={{ fontWeight: '800', color: colors.text }}>{p.rounds}</Text> rounds
                 </Text>
               </View>
             </View>
@@ -406,102 +410,104 @@ export default function HIITScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.dark.background },
-  setupContent: { padding: 16, paddingBottom: 40 },
+function getStyles(colors: any) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    setupContent: { padding: 16, paddingBottom: 40 },
 
-  // Presets
-  presetCard: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.dark.surface,
-    borderRadius: 14, marginBottom: 10, borderWidth: 1.5, borderColor: Colors.dark.surfaceBorder,
-    overflow: 'hidden',
-  },
-  presetStripe: { width: 4, alignSelf: 'stretch' },
-  presetInfo: { flex: 1, padding: 16, paddingLeft: 14 },
-  presetName: { fontSize: 16, fontWeight: '700', color: Colors.dark.text, marginBottom: 4 },
-  presetDetails: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  presetDetail: { fontSize: 13, color: Colors.dark.textSecondary },
-  presetDot: { fontSize: 13, color: Colors.dark.surfaceBorder },
-  presetTime: { paddingRight: 16 },
-  presetTimeText: { fontSize: 20, fontWeight: '800' },
+    // Presets
+    presetCard: {
+      flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface,
+      borderRadius: 14, marginBottom: 10, borderWidth: 1.5, borderColor: colors.surfaceBorder,
+      overflow: 'hidden',
+    },
+    presetStripe: { width: 4, alignSelf: 'stretch' },
+    presetInfo: { flex: 1, padding: 16, paddingLeft: 14 },
+    presetName: { fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 4 },
+    presetDetails: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    presetDetail: { fontSize: 13, color: colors.textSecondary },
+    presetDot: { fontSize: 13, color: colors.surfaceBorder },
+    presetTime: { paddingRight: 16 },
+    presetTimeText: { fontSize: 20, fontWeight: '800' },
 
-  // Custom
-  customToggle: {
-    backgroundColor: Colors.dark.surface, borderRadius: 12, padding: 16, alignItems: 'center',
-    marginTop: 6, marginBottom: 10, borderWidth: 1, borderColor: Colors.dark.surfaceBorder,
-  },
-  customToggleActive: { borderColor: '#f472b6' },
-  customToggleText: { fontSize: 15, fontWeight: '700', color: '#f472b6' },
-  customBuilder: {
-    backgroundColor: Colors.dark.surface, borderRadius: 14, padding: 18, marginBottom: 16,
-    borderWidth: 1, borderColor: '#f472b6' + '40',
-  },
-  customRow: { flexDirection: 'row', gap: 12 },
-  customField: { flex: 1 },
-  customLabel: { fontSize: 10, fontWeight: '800', color: Colors.dark.textSecondary, letterSpacing: 1, marginBottom: 8 },
-  customInput: {
-    backgroundColor: Colors.dark.background, borderRadius: 10, padding: 14,
-    fontSize: 22, fontWeight: '800', color: '#fff', textAlign: 'center',
-    borderWidth: 1.5,
-  },
-  customStartBtn: { backgroundColor: '#f472b6', borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 16 },
+    // Custom
+    customToggle: {
+      backgroundColor: colors.surface, borderRadius: 12, padding: 16, alignItems: 'center',
+      marginTop: 6, marginBottom: 10, borderWidth: 1, borderColor: colors.surfaceBorder,
+    },
+    customToggleActive: { borderColor: '#f472b6' },
+    customToggleText: { fontSize: 15, fontWeight: '700', color: '#f472b6' },
+    customBuilder: {
+      backgroundColor: colors.surface, borderRadius: 14, padding: 18, marginBottom: 16,
+      borderWidth: 1, borderColor: '#f472b6' + '40',
+    },
+    customRow: { flexDirection: 'row', gap: 12 },
+    customField: { flex: 1 },
+    customLabel: { fontSize: 10, fontWeight: '800', color: colors.textSecondary, letterSpacing: 1, marginBottom: 8 },
+    customInput: {
+      backgroundColor: colors.background, borderRadius: 10, padding: 14,
+      fontSize: 22, fontWeight: '800', color: '#fff', textAlign: 'center',
+      borderWidth: 1.5,
+    },
+    customStartBtn: { backgroundColor: '#f472b6', borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 16 },
 
-  // Summary
-  summary: {
-    backgroundColor: Colors.dark.surface, borderRadius: 16, padding: 20, marginTop: 10,
-    borderWidth: 1, borderColor: Colors.dark.surfaceBorder,
-  },
-  summaryRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 20 },
-  summaryItem: { alignItems: 'center' },
-  summaryValue: { fontSize: 28, fontWeight: '800', color: Colors.dark.text },
-  summaryLabel: { fontSize: 11, color: Colors.dark.textSecondary, marginTop: 2, fontWeight: '600' },
-  summaryX: { fontSize: 18, color: Colors.dark.textSecondary, fontWeight: '300' },
-  startBtn: { borderRadius: 14, padding: 18, alignItems: 'center' },
-  startBtnText: { color: '#fff', fontSize: 18, fontWeight: '800' },
+    // Summary
+    summary: {
+      backgroundColor: colors.surface, borderRadius: 16, padding: 20, marginTop: 10,
+      borderWidth: 1, borderColor: colors.surfaceBorder,
+    },
+    summaryRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 20 },
+    summaryItem: { alignItems: 'center' },
+    summaryValue: { fontSize: 28, fontWeight: '800', color: colors.text },
+    summaryLabel: { fontSize: 11, color: colors.textSecondary, marginTop: 2, fontWeight: '600' },
+    summaryX: { fontSize: 18, color: colors.textSecondary, fontWeight: '300' },
+    startBtn: { borderRadius: 14, padding: 18, alignItems: 'center' },
+    startBtnText: { color: '#fff', fontSize: 18, fontWeight: '800' },
 
-  // Active
-  activeScreen: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 30 },
-  roundRow: {
-    flexDirection: 'row', gap: 6, position: 'absolute', top: 30,
-    flexWrap: 'wrap', justifyContent: 'center', paddingHorizontal: 20,
-  },
-  roundDot: {
-    width: 12, height: 12, borderRadius: 6, backgroundColor: 'rgba(255,255,255,0.15)',
-  },
-  roundDotDone: { backgroundColor: 'rgba(255,255,255,0.6)' },
-  roundDotActive: { backgroundColor: '#fff', shadowColor: '#fff', shadowRadius: 8, shadowOpacity: 0.6 },
-  phaseLabel: {
-    fontSize: 20, fontWeight: '900', color: 'rgba(255,255,255,0.7)',
-    letterSpacing: 6, marginBottom: 10,
-  },
-  bigTimer: { fontSize: 120, fontWeight: '200', color: '#fff', lineHeight: 130 },
-  roundInfo: { fontSize: 16, color: 'rgba(255,255,255,0.5)', marginTop: 10, fontWeight: '600' },
-  timerProgress: {
-    width: '80%', height: 4, backgroundColor: 'rgba(255,255,255,0.1)',
-    borderRadius: 2, marginTop: 40, overflow: 'hidden',
-  },
-  timerProgressFill: { height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.5)' },
-  controls: {
-    flexDirection: 'row', gap: 30, position: 'absolute', bottom: 100,
-  },
-  controlBtn: { alignItems: 'center', gap: 6 },
-  controlIcon: { fontSize: 28, color: '#fff' },
-  controlLabel: { fontSize: 13, color: 'rgba(255,255,255,0.6)', fontWeight: '600' },
-  liveStats: {
-    flexDirection: 'row', gap: 40, position: 'absolute', bottom: 40,
-  },
-  liveStat: { alignItems: 'center' },
-  liveStatValue: { fontSize: 16, fontWeight: '700', color: 'rgba(255,255,255,0.8)' },
-  liveStatLabel: { fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 2 },
+    // Active
+    activeScreen: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 30 },
+    roundRow: {
+      flexDirection: 'row', gap: 6, position: 'absolute', top: 30,
+      flexWrap: 'wrap', justifyContent: 'center', paddingHorizontal: 20,
+    },
+    roundDot: {
+      width: 12, height: 12, borderRadius: 6, backgroundColor: 'rgba(255,255,255,0.15)',
+    },
+    roundDotDone: { backgroundColor: 'rgba(255,255,255,0.6)' },
+    roundDotActive: { backgroundColor: '#fff', shadowColor: '#fff', shadowRadius: 8, shadowOpacity: 0.6 },
+    phaseLabel: {
+      fontSize: 20, fontWeight: '900', color: 'rgba(255,255,255,0.7)',
+      letterSpacing: 6, marginBottom: 10,
+    },
+    bigTimer: { fontSize: 120, fontWeight: '200', color: '#fff', lineHeight: 130 },
+    roundInfo: { fontSize: 16, color: 'rgba(255,255,255,0.5)', marginTop: 10, fontWeight: '600' },
+    timerProgress: {
+      width: '80%', height: 4, backgroundColor: 'rgba(255,255,255,0.1)',
+      borderRadius: 2, marginTop: 40, overflow: 'hidden',
+    },
+    timerProgressFill: { height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.5)' },
+    controls: {
+      flexDirection: 'row', gap: 30, position: 'absolute', bottom: 100,
+    },
+    controlBtn: { alignItems: 'center', gap: 6 },
+    controlIcon: { fontSize: 28, color: '#fff' },
+    controlLabel: { fontSize: 13, color: 'rgba(255,255,255,0.6)', fontWeight: '600' },
+    liveStats: {
+      flexDirection: 'row', gap: 40, position: 'absolute', bottom: 40,
+    },
+    liveStat: { alignItems: 'center' },
+    liveStatValue: { fontSize: 16, fontWeight: '700', color: 'rgba(255,255,255,0.8)' },
+    liveStatLabel: { fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 2 },
 
-  // Done
-  doneScreen: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 30 },
-  doneEmoji: { fontSize: 64, marginBottom: 16 },
-  doneTitle: { fontSize: 28, fontWeight: '800', color: Colors.dark.text, marginBottom: 30 },
-  doneStats: { flexDirection: 'row', gap: 30, marginBottom: 40 },
-  doneStat: { alignItems: 'center' },
-  doneStatValue: { fontSize: 28, fontWeight: '800', color: Colors.primary },
-  doneStatLabel: { fontSize: 12, color: Colors.dark.textSecondary, marginTop: 4 },
-  backBtn: { marginTop: 16, padding: 14 },
-  backBtnText: { fontSize: 15, color: Colors.dark.textSecondary, fontWeight: '600' },
-});
+    // Done
+    doneScreen: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 30 },
+    doneEmoji: { fontSize: 64, marginBottom: 16 },
+    doneTitle: { fontSize: 28, fontWeight: '800', color: colors.text, marginBottom: 30 },
+    doneStats: { flexDirection: 'row', gap: 30, marginBottom: 40 },
+    doneStat: { alignItems: 'center' },
+    doneStatValue: { fontSize: 28, fontWeight: '800', color: Colors.primary },
+    doneStatLabel: { fontSize: 12, color: colors.textSecondary, marginTop: 4 },
+    backBtn: { marginTop: 16, padding: 14 },
+    backBtnText: { fontSize: 15, color: colors.textSecondary, fontWeight: '600' },
+  });
+}

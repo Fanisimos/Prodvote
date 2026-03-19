@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Colors from '../../constants/Colors';
+import { useTheme } from '../../lib/ThemeContext';
 
 type Column = 'todo' | 'progress' | 'done';
 
@@ -38,6 +39,9 @@ function genId() {
 }
 
 export default function KanbanScreen() {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
+
   const [cards, setCards] = useState<KanbanCard[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
@@ -127,7 +131,7 @@ export default function KanbanScreen() {
                         <Text style={styles.cardBtnText}>↗ Move</Text>
                       </TouchableOpacity>
                       <TouchableOpacity onPress={() => deleteCard(card.id)} style={styles.cardBtn}>
-                        <Text style={[styles.cardBtnText, { color: Colors.dark.error }]}>×</Text>
+                        <Text style={[styles.cardBtnText, { color: colors.error }]}>×</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -202,61 +206,63 @@ export default function KanbanScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.dark.background },
-  scrollContent: { padding: 16, paddingBottom: 40 },
-  column: {
-    backgroundColor: Colors.dark.surface,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: Colors.dark.surfaceBorder,
-  },
-  colHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
-  colTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  colIcon: { fontSize: 16 },
-  colTitle: { fontSize: 16, fontWeight: '700', color: Colors.dark.text },
-  colCount: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
-  colCountText: { fontSize: 12, fontWeight: '800' },
-  addIcon: { fontSize: 24, fontWeight: '400' },
-  card: {
-    backgroundColor: Colors.dark.background,
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 8,
-  },
-  cardContent: {},
-  cardText: { fontSize: 14, color: Colors.dark.text, lineHeight: 20, marginBottom: 10 },
-  cardActions: { flexDirection: 'row', justifyContent: 'space-between' },
-  cardBtn: { padding: 4 },
-  cardBtnText: { fontSize: 13, color: Colors.dark.textSecondary, fontWeight: '600' },
-  emptyCol: { paddingVertical: 20, alignItems: 'center' },
-  emptyColText: { fontSize: 14, color: Colors.dark.textSecondary },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-  modalContent: {
-    backgroundColor: Colors.dark.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    padding: 24, paddingBottom: 40, borderWidth: 1, borderColor: Colors.dark.surfaceBorder, borderBottomWidth: 0,
-  },
-  moveModal: {
-    backgroundColor: Colors.dark.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    padding: 24, paddingBottom: 40, borderWidth: 1, borderColor: Colors.dark.surfaceBorder, borderBottomWidth: 0,
-  },
-  modalTitle: { fontSize: 20, fontWeight: '700', color: Colors.dark.text, marginBottom: 20 },
-  input: {
-    backgroundColor: Colors.dark.background, borderWidth: 1, borderColor: Colors.dark.surfaceBorder,
-    borderRadius: 12, padding: 16, fontSize: 16, color: Colors.dark.text, minHeight: 80,
-  },
-  label: { fontSize: 12, fontWeight: '700', color: Colors.dark.textSecondary, marginTop: 16, marginBottom: 10, letterSpacing: 1 },
-  colorRow: { flexDirection: 'row', gap: 10 },
-  colorDot: { width: 32, height: 32, borderRadius: 16, borderWidth: 3, borderColor: 'transparent' },
-  colorSelected: { borderColor: '#fff' },
-  addBtn: { backgroundColor: Colors.primary, borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 20 },
-  addBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  moveOption: {
-    flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 16,
-    borderBottomWidth: 1, borderBottomColor: Colors.dark.surfaceBorder,
-  },
-  moveIcon: { fontSize: 20 },
-  moveText: { fontSize: 16, fontWeight: '600', color: Colors.dark.text },
-});
+function getStyles(colors: any) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    scrollContent: { padding: 16, paddingBottom: 40 },
+    column: {
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+    },
+    colHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
+    colTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    colIcon: { fontSize: 16 },
+    colTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
+    colCount: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
+    colCountText: { fontSize: 12, fontWeight: '800' },
+    addIcon: { fontSize: 24, fontWeight: '400' },
+    card: {
+      backgroundColor: colors.background,
+      borderRadius: 10,
+      padding: 14,
+      marginBottom: 8,
+    },
+    cardContent: {},
+    cardText: { fontSize: 14, color: colors.text, lineHeight: 20, marginBottom: 10 },
+    cardActions: { flexDirection: 'row', justifyContent: 'space-between' },
+    cardBtn: { padding: 4 },
+    cardBtnText: { fontSize: 13, color: colors.textSecondary, fontWeight: '600' },
+    emptyCol: { paddingVertical: 20, alignItems: 'center' },
+    emptyColText: { fontSize: 14, color: colors.textSecondary },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+    modalContent: {
+      backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24,
+      padding: 24, paddingBottom: 40, borderWidth: 1, borderColor: colors.surfaceBorder, borderBottomWidth: 0,
+    },
+    moveModal: {
+      backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24,
+      padding: 24, paddingBottom: 40, borderWidth: 1, borderColor: colors.surfaceBorder, borderBottomWidth: 0,
+    },
+    modalTitle: { fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: 20 },
+    input: {
+      backgroundColor: colors.background, borderWidth: 1, borderColor: colors.surfaceBorder,
+      borderRadius: 12, padding: 16, fontSize: 16, color: colors.text, minHeight: 80,
+    },
+    label: { fontSize: 12, fontWeight: '700', color: colors.textSecondary, marginTop: 16, marginBottom: 10, letterSpacing: 1 },
+    colorRow: { flexDirection: 'row', gap: 10 },
+    colorDot: { width: 32, height: 32, borderRadius: 16, borderWidth: 3, borderColor: 'transparent' },
+    colorSelected: { borderColor: '#fff' },
+    addBtn: { backgroundColor: Colors.primary, borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 20 },
+    addBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+    moveOption: {
+      flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 16,
+      borderBottomWidth: 1, borderBottomColor: colors.surfaceBorder,
+    },
+    moveIcon: { fontSize: 20 },
+    moveText: { fontSize: 16, fontWeight: '600', color: colors.text },
+  });
+}

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Colors from '../../constants/Colors';
+import { useTheme } from '../../lib/ThemeContext';
 
 interface Habit {
   id: string;
@@ -67,6 +68,9 @@ function calcStreak(dates: string[]): number {
 }
 
 export default function HabitsScreen() {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
+
   const [habits, setHabits] = useState<Habit[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
@@ -243,72 +247,74 @@ export default function HabitsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.dark.background },
-  progressCard: {
-    backgroundColor: Colors.dark.surface,
-    margin: 16,
-    borderRadius: 14,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: Colors.dark.surfaceBorder,
-  },
-  progressHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-  progressTitle: { fontSize: 15, fontWeight: '700', color: Colors.dark.text },
-  progressCount: { fontSize: 15, fontWeight: '800', color: Colors.primary },
-  progressBar: { height: 6, backgroundColor: Colors.dark.surfaceBorder, borderRadius: 3 },
-  progressFill: { height: 6, backgroundColor: Colors.primary, borderRadius: 3 },
-  scrollContent: { paddingHorizontal: 16, paddingBottom: 100 },
-  habitCard: {
-    backgroundColor: Colors.dark.surface,
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-  },
-  habitHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
-  habitInfo: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  habitIcon: { fontSize: 28 },
-  habitName: { fontSize: 16, fontWeight: '700', color: Colors.dark.text },
-  habitStreak: { fontSize: 12, color: Colors.dark.textSecondary, marginTop: 2 },
-  habitDelete: { fontSize: 24, color: Colors.dark.textSecondary, padding: 4 },
-  weekRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 6 },
-  dayCell: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: Colors.dark.background,
-  },
-  dayLabel: { fontSize: 10, color: Colors.dark.textSecondary, fontWeight: '600' },
-  dayNum: { fontSize: 14, color: Colors.dark.text, marginTop: 2 },
-  empty: { alignItems: 'center', paddingTop: 60 },
-  emptyIcon: { fontSize: 48, marginBottom: 12 },
-  emptyText: { fontSize: 18, fontWeight: '600', color: Colors.dark.text },
-  emptySub: { fontSize: 14, color: Colors.dark.textSecondary, marginTop: 4 },
-  fab: {
-    position: 'absolute', bottom: 24, right: 24, width: 56, height: 56, borderRadius: 28,
-    backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center',
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 8,
-  },
-  fabText: { fontSize: 28, color: '#fff', lineHeight: 56, textAlign: 'center' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-  modalContent: {
-    backgroundColor: Colors.dark.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    padding: 24, paddingBottom: 40, borderWidth: 1, borderColor: Colors.dark.surfaceBorder, borderBottomWidth: 0,
-  },
-  modalTitle: { fontSize: 20, fontWeight: '700', color: Colors.dark.text, marginBottom: 20 },
-  input: {
-    backgroundColor: Colors.dark.background, borderWidth: 1, borderColor: Colors.dark.surfaceBorder,
-    borderRadius: 12, padding: 16, fontSize: 16, color: Colors.dark.text,
-  },
-  label: { fontSize: 12, fontWeight: '700', color: Colors.dark.textSecondary, marginTop: 18, marginBottom: 10, letterSpacing: 1 },
-  iconPicker: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  iconOption: { padding: 8, borderRadius: 10, borderWidth: 1, borderColor: Colors.dark.surfaceBorder },
-  iconSelected: { borderColor: Colors.primary, backgroundColor: Colors.primary + '22' },
-  colorPicker: { flexDirection: 'row', gap: 10 },
-  colorOption: { width: 36, height: 36, borderRadius: 18, borderWidth: 3, borderColor: 'transparent' },
-  colorSelected: { borderColor: '#fff' },
-  addBtn: { backgroundColor: Colors.primary, borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 20 },
-  addBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-});
+function getStyles(colors: any) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    progressCard: {
+      backgroundColor: colors.surface,
+      margin: 16,
+      borderRadius: 14,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+    },
+    progressHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
+    progressTitle: { fontSize: 15, fontWeight: '700', color: colors.text },
+    progressCount: { fontSize: 15, fontWeight: '800', color: Colors.primary },
+    progressBar: { height: 6, backgroundColor: colors.surfaceBorder, borderRadius: 3 },
+    progressFill: { height: 6, backgroundColor: Colors.primary, borderRadius: 3 },
+    scrollContent: { paddingHorizontal: 16, paddingBottom: 100 },
+    habitCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 14,
+      padding: 16,
+      marginBottom: 12,
+      borderWidth: 1,
+    },
+    habitHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
+    habitInfo: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    habitIcon: { fontSize: 28 },
+    habitName: { fontSize: 16, fontWeight: '700', color: colors.text },
+    habitStreak: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+    habitDelete: { fontSize: 24, color: colors.textSecondary, padding: 4 },
+    weekRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 6 },
+    dayCell: {
+      flex: 1,
+      alignItems: 'center',
+      paddingVertical: 8,
+      borderRadius: 10,
+      backgroundColor: colors.background,
+    },
+    dayLabel: { fontSize: 10, color: colors.textSecondary, fontWeight: '600' },
+    dayNum: { fontSize: 14, color: colors.text, marginTop: 2 },
+    empty: { alignItems: 'center', paddingTop: 60 },
+    emptyIcon: { fontSize: 48, marginBottom: 12 },
+    emptyText: { fontSize: 18, fontWeight: '600', color: colors.text },
+    emptySub: { fontSize: 14, color: colors.textSecondary, marginTop: 4 },
+    fab: {
+      position: 'absolute', bottom: 24, right: 24, width: 56, height: 56, borderRadius: 28,
+      backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center',
+      shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 8,
+    },
+    fabText: { fontSize: 28, color: '#fff', lineHeight: 56, textAlign: 'center' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+    modalContent: {
+      backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24,
+      padding: 24, paddingBottom: 40, borderWidth: 1, borderColor: colors.surfaceBorder, borderBottomWidth: 0,
+    },
+    modalTitle: { fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: 20 },
+    input: {
+      backgroundColor: colors.background, borderWidth: 1, borderColor: colors.surfaceBorder,
+      borderRadius: 12, padding: 16, fontSize: 16, color: colors.text,
+    },
+    label: { fontSize: 12, fontWeight: '700', color: colors.textSecondary, marginTop: 18, marginBottom: 10, letterSpacing: 1 },
+    iconPicker: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    iconOption: { padding: 8, borderRadius: 10, borderWidth: 1, borderColor: colors.surfaceBorder },
+    iconSelected: { borderColor: Colors.primary, backgroundColor: Colors.primary + '22' },
+    colorPicker: { flexDirection: 'row', gap: 10 },
+    colorOption: { width: 36, height: 36, borderRadius: 18, borderWidth: 3, borderColor: 'transparent' },
+    colorSelected: { borderColor: '#fff' },
+    addBtn: { backgroundColor: Colors.primary, borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 20 },
+    addBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  });
+}

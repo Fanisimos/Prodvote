@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useTasks, QUADRANTS, Quadrant, Task } from '../../hooks/useTasks';
 import Colors from '../../constants/Colors';
+import { useTheme } from '../../lib/ThemeContext';
 
 function QuadrantCard({
   quadrant,
@@ -24,6 +25,7 @@ function QuadrantCard({
   onAddSubtask,
   onToggleSubtask,
   onDeleteSubtask,
+  colors,
 }: {
   quadrant: Quadrant;
   tasks: Task[];
@@ -34,7 +36,9 @@ function QuadrantCard({
   onAddSubtask: (taskId: string) => void;
   onToggleSubtask: (taskId: string, subtaskId: string) => void;
   onDeleteSubtask: (taskId: string, subtaskId: string) => void;
+  colors: any;
 }) {
+  const styles = getStyles(colors);
   const q = QUADRANTS[quadrant];
   const active = tasks.filter(t => !t.done);
   const done = tasks.filter(t => t.done);
@@ -134,6 +138,9 @@ function QuadrantCard({
 }
 
 export default function TasksScreen() {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
+
   const {
     stats,
     loaded,
@@ -223,6 +230,7 @@ export default function TasksScreen() {
             onAddSubtask={handleAddSubtask}
             onToggleSubtask={toggleSubtask}
             onDeleteSubtask={deleteSubtask}
+            colors={colors}
           />
         ))}
       </ScrollView>
@@ -322,332 +330,334 @@ export default function TasksScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.dark.background,
-  },
-  statsBar: {
-    flexDirection: 'row',
-    backgroundColor: Colors.dark.surface,
-    marginHorizontal: 16,
-    marginTop: 12,
-    borderRadius: 14,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: Colors.dark.surfaceBorder,
-  },
-  stat: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: Colors.primary,
-  },
-  statLabel: {
-    fontSize: 11,
-    color: Colors.dark.textSecondary,
-    fontWeight: '600',
-    marginTop: 2,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  statDivider: {
-    width: 1,
-    backgroundColor: Colors.dark.surfaceBorder,
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 100,
-  },
-  quadrantCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    marginBottom: 14,
-    overflow: 'hidden',
-  },
-  quadrantHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    paddingBottom: 12,
-  },
-  quadrantTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  quadrantDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  quadrantName: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  quadrantSubtitle: {
-    fontSize: 11,
-    color: Colors.dark.textSecondary,
-    marginTop: 1,
-  },
-  countBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10,
-  },
-  countText: {
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  taskRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.04)',
-  },
-  checkbox: {
-    marginRight: 12,
-  },
-  checkboxInner: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
-    borderWidth: 2,
-  },
-  checkboxDone: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  checkmark: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  taskTextWrap: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  taskText: {
-    fontSize: 15,
-    color: Colors.dark.text,
-    flex: 1,
-  },
-  taskTextDone: {
-    fontSize: 14,
-    color: Colors.dark.textSecondary,
-    textDecorationLine: 'line-through',
-    flex: 1,
-    opacity: 0.6,
-  },
-  subtaskCount: {
-    fontSize: 11,
-    color: Colors.dark.textSecondary,
-    backgroundColor: Colors.dark.surface,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  moveBtn: {
-    padding: 6,
-    marginLeft: 4,
-  },
-  moveBtnText: {
-    fontSize: 16,
-    color: Colors.dark.textSecondary,
-  },
-  deleteBtn: {
-    padding: 6,
-    marginLeft: 2,
-  },
-  deleteBtnText: {
-    fontSize: 20,
-    color: Colors.dark.textSecondary,
-    fontWeight: '300',
-  },
-  subtaskSection: {
-    paddingLeft: 50,
-    paddingRight: 16,
-    paddingBottom: 8,
-  },
-  subtaskRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 4,
-  },
-  subtaskText: {
-    fontSize: 13,
-    color: Colors.dark.textSecondary,
-  },
-  subtaskDone: {
-    fontSize: 13,
-    color: Colors.dark.textSecondary,
-    opacity: 0.5,
-    textDecorationLine: 'line-through',
-  },
-  subtaskDelete: {
-    fontSize: 16,
-    color: Colors.dark.textSecondary,
-    opacity: 0.5,
-    paddingHorizontal: 8,
-  },
-  addSubtaskBtn: {
-    paddingVertical: 6,
-  },
-  addSubtaskText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  doneSection: {
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.04)',
-    paddingTop: 4,
-  },
-  doneLabel: {
-    fontSize: 11,
-    color: Colors.dark.textSecondary,
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 4,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    fontWeight: '600',
-    opacity: 0.6,
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 24,
-    right: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: Colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  fabText: {
-    fontSize: 28,
-    color: '#fff',
-    fontWeight: '400',
-    marginTop: -2,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: Colors.dark.surface,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    paddingBottom: 40,
-    borderWidth: 1,
-    borderColor: Colors.dark.surfaceBorder,
-    borderBottomWidth: 0,
-  },
-  moveModalContent: {
-    backgroundColor: Colors.dark.surface,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    paddingBottom: 40,
-    borderWidth: 1,
-    borderColor: Colors.dark.surfaceBorder,
-    borderBottomWidth: 0,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: Colors.dark.text,
-    marginBottom: 20,
-  },
-  modalLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.dark.textSecondary,
-    marginBottom: 10,
-    marginTop: 20,
-    letterSpacing: 1,
-  },
-  modalInput: {
-    backgroundColor: Colors.dark.background,
-    borderWidth: 1,
-    borderColor: Colors.dark.surfaceBorder,
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    color: Colors.dark.text,
-  },
-  quadrantPicker: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  quadrantOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: Colors.dark.surfaceBorder,
-  },
-  optionDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  optionText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Colors.dark.textSecondary,
-  },
-  moveOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.dark.surfaceBorder,
-  },
-  moveOptionText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  moveOptionSub: {
-    fontSize: 12,
-    color: Colors.dark.textSecondary,
-    marginTop: 2,
-  },
-  modalButton: {
-    backgroundColor: Colors.primary,
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  modalButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-});
+function getStyles(colors: any) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    statsBar: {
+      flexDirection: 'row',
+      backgroundColor: colors.surface,
+      marginHorizontal: 16,
+      marginTop: 12,
+      borderRadius: 14,
+      padding: 14,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+    },
+    stat: {
+      flex: 1,
+      alignItems: 'center',
+    },
+    statValue: {
+      fontSize: 20,
+      fontWeight: '800',
+      color: Colors.primary,
+    },
+    statLabel: {
+      fontSize: 11,
+      color: colors.textSecondary,
+      fontWeight: '600',
+      marginTop: 2,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    statDivider: {
+      width: 1,
+      backgroundColor: colors.surfaceBorder,
+    },
+    scrollContent: {
+      padding: 16,
+      paddingBottom: 100,
+    },
+    quadrantCard: {
+      borderRadius: 16,
+      borderWidth: 1,
+      marginBottom: 14,
+      overflow: 'hidden',
+    },
+    quadrantHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: 16,
+      paddingBottom: 12,
+    },
+    quadrantTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    quadrantDot: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.8,
+      shadowRadius: 4,
+      elevation: 4,
+    },
+    quadrantName: {
+      fontSize: 16,
+      fontWeight: '700',
+    },
+    quadrantSubtitle: {
+      fontSize: 11,
+      color: colors.textSecondary,
+      marginTop: 1,
+    },
+    countBadge: {
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 10,
+    },
+    countText: {
+      fontSize: 14,
+      fontWeight: '800',
+    },
+    taskRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      borderTopWidth: 1,
+      borderTopColor: 'rgba(255,255,255,0.04)',
+    },
+    checkbox: {
+      marginRight: 12,
+    },
+    checkboxInner: {
+      width: 22,
+      height: 22,
+      borderRadius: 6,
+      borderWidth: 2,
+    },
+    checkboxDone: {
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    checkmark: {
+      color: '#fff',
+      fontSize: 13,
+      fontWeight: '800',
+    },
+    taskTextWrap: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    taskText: {
+      fontSize: 15,
+      color: colors.text,
+      flex: 1,
+    },
+    taskTextDone: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      textDecorationLine: 'line-through',
+      flex: 1,
+      opacity: 0.6,
+    },
+    subtaskCount: {
+      fontSize: 11,
+      color: colors.textSecondary,
+      backgroundColor: colors.surface,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 4,
+    },
+    moveBtn: {
+      padding: 6,
+      marginLeft: 4,
+    },
+    moveBtnText: {
+      fontSize: 16,
+      color: colors.textSecondary,
+    },
+    deleteBtn: {
+      padding: 6,
+      marginLeft: 2,
+    },
+    deleteBtnText: {
+      fontSize: 20,
+      color: colors.textSecondary,
+      fontWeight: '300',
+    },
+    subtaskSection: {
+      paddingLeft: 50,
+      paddingRight: 16,
+      paddingBottom: 8,
+    },
+    subtaskRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 4,
+    },
+    subtaskText: {
+      fontSize: 13,
+      color: colors.textSecondary,
+    },
+    subtaskDone: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      opacity: 0.5,
+      textDecorationLine: 'line-through',
+    },
+    subtaskDelete: {
+      fontSize: 16,
+      color: colors.textSecondary,
+      opacity: 0.5,
+      paddingHorizontal: 8,
+    },
+    addSubtaskBtn: {
+      paddingVertical: 6,
+    },
+    addSubtaskText: {
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    doneSection: {
+      borderTopWidth: 1,
+      borderTopColor: 'rgba(255,255,255,0.04)',
+      paddingTop: 4,
+    },
+    doneLabel: {
+      fontSize: 11,
+      color: colors.textSecondary,
+      paddingHorizontal: 16,
+      paddingTop: 8,
+      paddingBottom: 4,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+      fontWeight: '600',
+      opacity: 0.6,
+    },
+    fab: {
+      position: 'absolute',
+      bottom: 24,
+      right: 24,
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: Colors.primary,
+      justifyContent: 'center',
+      alignItems: 'center',
+      shadowColor: Colors.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.4,
+      shadowRadius: 12,
+      elevation: 8,
+    },
+    fabText: {
+      fontSize: 28,
+      color: '#fff',
+      fontWeight: '400',
+      marginTop: -2,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.6)',
+      justifyContent: 'flex-end',
+    },
+    modalContent: {
+      backgroundColor: colors.surface,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      padding: 24,
+      paddingBottom: 40,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+      borderBottomWidth: 0,
+    },
+    moveModalContent: {
+      backgroundColor: colors.surface,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      padding: 24,
+      paddingBottom: 40,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+      borderBottomWidth: 0,
+    },
+    modalTitle: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: colors.text,
+      marginBottom: 20,
+    },
+    modalLabel: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: colors.textSecondary,
+      marginBottom: 10,
+      marginTop: 20,
+      letterSpacing: 1,
+    },
+    modalInput: {
+      backgroundColor: colors.background,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+      borderRadius: 12,
+      padding: 16,
+      fontSize: 16,
+      color: colors.text,
+    },
+    quadrantPicker: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    quadrantOption: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+    },
+    optionDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+    },
+    optionText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    moveOption: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 14,
+      paddingVertical: 14,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.surfaceBorder,
+    },
+    moveOptionText: {
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    moveOptionSub: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    modalButton: {
+      backgroundColor: Colors.primary,
+      borderRadius: 12,
+      padding: 16,
+      alignItems: 'center',
+      marginTop: 20,
+    },
+    modalButtonText: {
+      color: '#fff',
+      fontSize: 16,
+      fontWeight: '700',
+    },
+  });
+}

@@ -10,6 +10,7 @@ import {
   Vibration,
 } from 'react-native';
 import Colors from '../../constants/Colors';
+import { useTheme } from '../../lib/ThemeContext';
 
 interface BreathPattern {
   id: string;
@@ -63,6 +64,9 @@ const PATTERNS: BreathPattern[] = [
 const DURATIONS = [1, 2, 3, 5, 10]; // minutes
 
 export default function BreatheScreen() {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
+
   const [pattern, setPattern] = useState<BreathPattern>(PATTERNS[0]);
   const [duration, setDuration] = useState(3);
   const [isActive, setIsActive] = useState(false);
@@ -332,81 +336,83 @@ export default function BreatheScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.dark.background },
+function getStyles(colors: any) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
 
-  // Setup
-  setup: { flex: 1, padding: 20, paddingTop: 10 },
-  setupTitle: { fontSize: 22, fontWeight: '800', color: Colors.dark.text, marginBottom: 20 },
-  patternGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 28 },
-  patternCard: {
-    width: '48%' as any,
-    backgroundColor: Colors.dark.surface,
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1.5,
-    borderColor: Colors.dark.surfaceBorder,
-    flexGrow: 1,
-    flexBasis: '45%' as any,
-  },
-  patternDot: { width: 10, height: 10, borderRadius: 5, marginBottom: 10 },
-  patternName: { fontSize: 16, fontWeight: '700', color: Colors.dark.text, marginBottom: 2 },
-  patternDesc: { fontSize: 12, color: Colors.dark.textSecondary, marginBottom: 8 },
-  patternTiming: { fontSize: 13, fontWeight: '700' },
-  durationLabel: {
-    fontSize: 11, fontWeight: '800', color: Colors.dark.textSecondary,
-    letterSpacing: 1.5, marginBottom: 12,
-  },
-  durationRow: { flexDirection: 'row', gap: 10, marginBottom: 30 },
-  durationBtn: {
-    flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center',
-    backgroundColor: Colors.dark.surface, borderWidth: 1, borderColor: Colors.dark.surfaceBorder,
-  },
-  durationText: { fontSize: 16, fontWeight: '700', color: Colors.dark.textSecondary },
-  startBtn: {
-    borderRadius: 16, padding: 18, alignItems: 'center',
-    shadowColor: '#7c5cfc', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 16,
-  },
-  startBtnText: { color: '#fff', fontSize: 18, fontWeight: '800' },
+    // Setup
+    setup: { flex: 1, padding: 20, paddingTop: 10 },
+    setupTitle: { fontSize: 22, fontWeight: '800', color: colors.text, marginBottom: 20 },
+    patternGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 28 },
+    patternCard: {
+      width: '48%' as any,
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 16,
+      borderWidth: 1.5,
+      borderColor: colors.surfaceBorder,
+      flexGrow: 1,
+      flexBasis: '45%' as any,
+    },
+    patternDot: { width: 10, height: 10, borderRadius: 5, marginBottom: 10 },
+    patternName: { fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 2 },
+    patternDesc: { fontSize: 12, color: colors.textSecondary, marginBottom: 8 },
+    patternTiming: { fontSize: 13, fontWeight: '700' },
+    durationLabel: {
+      fontSize: 11, fontWeight: '800', color: colors.textSecondary,
+      letterSpacing: 1.5, marginBottom: 12,
+    },
+    durationRow: { flexDirection: 'row', gap: 10, marginBottom: 30 },
+    durationBtn: {
+      flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center',
+      backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.surfaceBorder,
+    },
+    durationText: { fontSize: 16, fontWeight: '700', color: colors.textSecondary },
+    startBtn: {
+      borderRadius: 16, padding: 18, alignItems: 'center',
+      shadowColor: '#7c5cfc', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 16,
+    },
+    startBtnText: { color: '#fff', fontSize: 18, fontWeight: '800' },
 
-  // Active
-  activeContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 30 },
-  topInfo: { position: 'absolute', top: 30, alignItems: 'center' },
-  timerText: { fontSize: 42, fontWeight: '200', color: Colors.dark.text, letterSpacing: 2 },
-  cycleText: { fontSize: 14, color: Colors.dark.textSecondary, marginTop: 4 },
-  circleContainer: {
-    width: 280, height: 280, justifyContent: 'center', alignItems: 'center',
-  },
-  outerRing: {
-    position: 'absolute', width: 280, height: 280, borderRadius: 140,
-    borderWidth: 2,
-  },
-  breathCircle: {
-    width: 240, height: 240, borderRadius: 120,
-  },
-  labelOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  phaseLabel: {
-    fontSize: 22, fontWeight: '700', color: '#fff', textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8,
-  },
-  phaseCounter: {
-    fontSize: 48, fontWeight: '200', color: '#fff', marginTop: 4,
-    textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8,
-  },
-  progressBar: {
-    width: '80%', height: 4, backgroundColor: Colors.dark.surfaceBorder,
-    borderRadius: 2, marginTop: 50, overflow: 'hidden',
-  },
-  progressFill: { height: 4, borderRadius: 2 },
-  activePatternName: { fontSize: 16, fontWeight: '700', marginTop: 16 },
-  stopBtn: {
-    position: 'absolute', bottom: 40,
-    backgroundColor: Colors.dark.surface, borderRadius: 14, paddingHorizontal: 36, paddingVertical: 16,
-    borderWidth: 1, borderColor: Colors.dark.surfaceBorder,
-  },
-  stopBtnText: { fontSize: 16, fontWeight: '700', color: Colors.dark.textSecondary },
-});
+    // Active
+    activeContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 30 },
+    topInfo: { position: 'absolute', top: 30, alignItems: 'center' },
+    timerText: { fontSize: 42, fontWeight: '200', color: colors.text, letterSpacing: 2 },
+    cycleText: { fontSize: 14, color: colors.textSecondary, marginTop: 4 },
+    circleContainer: {
+      width: 280, height: 280, justifyContent: 'center', alignItems: 'center',
+    },
+    outerRing: {
+      position: 'absolute', width: 280, height: 280, borderRadius: 140,
+      borderWidth: 2,
+    },
+    breathCircle: {
+      width: 240, height: 240, borderRadius: 120,
+    },
+    labelOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    phaseLabel: {
+      fontSize: 22, fontWeight: '700', color: '#fff', textShadowColor: 'rgba(0,0,0,0.5)',
+      textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8,
+    },
+    phaseCounter: {
+      fontSize: 48, fontWeight: '200', color: '#fff', marginTop: 4,
+      textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8,
+    },
+    progressBar: {
+      width: '80%', height: 4, backgroundColor: colors.surfaceBorder,
+      borderRadius: 2, marginTop: 50, overflow: 'hidden',
+    },
+    progressFill: { height: 4, borderRadius: 2 },
+    activePatternName: { fontSize: 16, fontWeight: '700', marginTop: 16 },
+    stopBtn: {
+      position: 'absolute', bottom: 40,
+      backgroundColor: colors.surface, borderRadius: 14, paddingHorizontal: 36, paddingVertical: 16,
+      borderWidth: 1, borderColor: colors.surfaceBorder,
+    },
+    stopBtnText: { fontSize: 16, fontWeight: '700', color: colors.textSecondary },
+  });
+}

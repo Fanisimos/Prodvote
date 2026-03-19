@@ -1,27 +1,18 @@
-import { Stack, useRouter } from 'expo-router';
-import { TouchableOpacity, Text } from 'react-native';
+import { Stack } from 'expo-router';
+import BackButton from '../../components/BackButton';
 import Colors from '../../constants/Colors';
-
-function BackButton() {
-  const router = useRouter();
-  return (
-    <TouchableOpacity
-      onPress={() => router.navigate('/(tabs)/apps')}
-      style={{ paddingLeft: 12, paddingRight: 16, marginTop: -6 }}
-    >
-      <Text style={{ fontSize: 28, color: Colors.primary, fontWeight: '300', lineHeight: 28 }}>‹</Text>
-    </TouchableOpacity>
-  );
-}
+import { useTheme } from '../../lib/ThemeContext';
 
 export default function AppsLayout() {
+  const { colors } = useTheme();
+
   return (
     <Stack
       screenOptions={{
-        headerStyle: { backgroundColor: Colors.dark.background },
-        headerTintColor: Colors.dark.text,
+        headerStyle: { backgroundColor: colors.background },
+        headerTintColor: colors.text,
         headerTitleStyle: { fontWeight: '700' },
-        headerLeft: () => <BackButton />,
+        headerLeft: () => <BackButton to="/(tabs)/apps" />,
       }}
     >
       <Stack.Screen name="eisenhower" options={{ title: 'Eisenhower Matrix' }} />
@@ -33,6 +24,7 @@ export default function AppsLayout() {
       <Stack.Screen name="whiteboard" options={{ title: 'Whiteboard' }} />
       <Stack.Screen name="breathe" options={{ title: 'Breathe' }} />
       <Stack.Screen name="hiit" options={{ title: 'HIIT Timer' }} />
+      <Stack.Screen name="plans" options={{ title: 'Choose Plan' }} />
     </Stack>
   );
 }

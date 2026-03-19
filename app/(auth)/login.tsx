@@ -11,11 +11,13 @@ import {
 } from 'react-native';
 import { Link } from 'expo-router';
 import { useAuthContext } from '../../lib/AuthContext';
+import { useTheme } from '../../lib/ThemeContext';
 import { LogoIcon } from '../../components/Logo';
 import Colors from '../../constants/Colors';
 
 export default function LoginScreen() {
   const { signIn } = useAuthContext();
+  const { colors } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -32,6 +34,8 @@ export default function LoginScreen() {
     setLoading(false);
     if (err) setError(err.message);
   }
+
+  const styles = getStyles(colors);
 
   return (
     <KeyboardAvoidingView
@@ -96,104 +100,106 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.dark.background,
-  },
-  inner: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 28,
-    maxWidth: 420,
-    width: '100%',
-    alignSelf: 'center',
-  },
-  logoSection: {
-    alignItems: 'center',
-    marginBottom: 36,
-  },
-  logo: {
-    fontSize: 44,
-    fontWeight: '800',
-    color: '#fff',
-    marginTop: 16,
-    letterSpacing: -1,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: Colors.dark.textSecondary,
-    marginTop: 6,
-  },
-  betaBadge: {
-    marginTop: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: Colors.primary + '55',
-    backgroundColor: Colors.primary + '15',
-  },
-  betaText: {
-    color: Colors.primaryLight,
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 1.5,
-  },
-  formCard: {
-    backgroundColor: Colors.dark.surface,
-    borderRadius: 20,
-    padding: 24,
-    gap: 14,
-    borderWidth: 1,
-    borderColor: Colors.dark.surfaceBorder,
-  },
-  input: {
-    backgroundColor: Colors.dark.background,
-    borderWidth: 1,
-    borderColor: Colors.dark.surfaceBorder,
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    color: Colors.dark.text,
-  },
-  error: {
-    color: Colors.dark.error,
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  button: {
-    backgroundColor: Colors.primary,
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  linkButton: {
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  linkText: {
-    color: Colors.dark.textSecondary,
-    fontSize: 15,
-  },
-  linkBold: {
-    color: Colors.primaryLight,
-    fontWeight: '600',
-  },
-  companyText: {
-    textAlign: 'center',
-    color: Colors.dark.textSecondary + '88',
-    fontSize: 13,
-    marginTop: 32,
-    letterSpacing: 0.3,
-  },
-});
+function getStyles(colors: any) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    inner: {
+      flex: 1,
+      justifyContent: 'center',
+      paddingHorizontal: 28,
+      maxWidth: 420,
+      width: '100%',
+      alignSelf: 'center',
+    },
+    logoSection: {
+      alignItems: 'center',
+      marginBottom: 36,
+    },
+    logo: {
+      fontSize: 44,
+      fontWeight: '800',
+      color: '#fff',
+      marginTop: 16,
+      letterSpacing: -1,
+    },
+    subtitle: {
+      fontSize: 16,
+      color: colors.textSecondary,
+      marginTop: 6,
+    },
+    betaBadge: {
+      marginTop: 14,
+      paddingHorizontal: 12,
+      paddingVertical: 4,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: Colors.primary + '55',
+      backgroundColor: Colors.primary + '15',
+    },
+    betaText: {
+      color: Colors.primaryLight,
+      fontSize: 11,
+      fontWeight: '800',
+      letterSpacing: 1.5,
+    },
+    formCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 20,
+      padding: 24,
+      gap: 14,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+    },
+    input: {
+      backgroundColor: colors.background,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+      borderRadius: 12,
+      padding: 16,
+      fontSize: 16,
+      color: colors.text,
+    },
+    error: {
+      color: colors.error,
+      fontSize: 14,
+      textAlign: 'center',
+    },
+    button: {
+      backgroundColor: Colors.primary,
+      borderRadius: 12,
+      padding: 16,
+      alignItems: 'center',
+      marginTop: 4,
+    },
+    buttonDisabled: {
+      opacity: 0.6,
+    },
+    buttonText: {
+      color: '#fff',
+      fontSize: 18,
+      fontWeight: '700',
+    },
+    linkButton: {
+      alignItems: 'center',
+      marginTop: 4,
+    },
+    linkText: {
+      color: colors.textSecondary,
+      fontSize: 15,
+    },
+    linkBold: {
+      color: Colors.primaryLight,
+      fontWeight: '600',
+    },
+    companyText: {
+      textAlign: 'center',
+      color: colors.textSecondary + '88',
+      fontSize: 13,
+      marginTop: 32,
+      letterSpacing: 0.3,
+    },
+  });
+}

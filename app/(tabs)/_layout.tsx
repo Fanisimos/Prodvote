@@ -2,11 +2,14 @@ import { Tabs } from 'expo-router';
 import { View, Text, Platform } from 'react-native';
 import { LogoIcon } from '../../components/Logo';
 import Colors from '../../constants/Colors';
+import { useTheme } from '../../lib/ThemeContext';
 
 function TabIcon({ name, focused }: { name: string; focused: boolean }) {
   const icons: Record<string, string> = {
     index: '🏠',
+    chat: '💬',
     apps: '🧩',
+    shop: '🏪',
     submit: '✍️',
     profile: '👤',
   };
@@ -29,14 +32,16 @@ function HeaderLogo() {
 }
 
 export default function TabLayout() {
+  const { colors } = useTheme();
+
   return (
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.dark.tabIconDefault,
+        tabBarInactiveTintColor: colors.tabIconDefault,
         tabBarStyle: {
-          backgroundColor: Colors.dark.surface,
-          borderTopColor: Colors.dark.surfaceBorder,
+          backgroundColor: colors.surface,
+          borderTopColor: colors.surfaceBorder,
           minHeight: Platform.OS === 'ios' ? 110 : 80,
         },
         tabBarItemStyle: {
@@ -53,9 +58,9 @@ export default function TabLayout() {
           marginTop: 2,
         },
         headerStyle: {
-          backgroundColor: Colors.dark.background,
+          backgroundColor: colors.background,
         },
-        headerTintColor: Colors.dark.text,
+        headerTintColor: colors.text,
         headerTitleStyle: {
           fontWeight: '700',
         },
@@ -70,11 +75,27 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="chat"
+        options={{
+          title: 'Chat',
+          headerTitle: 'Chat',
+          tabBarIcon: ({ focused }) => <TabIcon name="chat" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
         name="apps"
         options={{
           title: 'Apps',
           headerTitle: 'Apps',
           tabBarIcon: ({ focused }) => <TabIcon name="apps" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
+        name="shop"
+        options={{
+          title: 'Shop',
+          headerTitle: 'Badge Shop',
+          tabBarIcon: ({ focused }) => <TabIcon name="shop" focused={focused} />,
         }}
       />
       <Tabs.Screen

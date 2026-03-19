@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import Colors from '../../constants/Colors';
+import { useTheme } from '../../lib/ThemeContext';
 
 interface AppCard {
   id: string;
@@ -92,8 +93,21 @@ const APPS: AppCard[] = [
   },
 ];
 
+const GAMES: AppCard[] = [
+  {
+    id: 'moon-patrol',
+    name: 'Moon Patrol: Dark Frontier',
+    description: 'Retro arcade shooter — dodge craters, blast aliens, survive the moon',
+    icon: '🚀',
+    color: '#a78bfa',
+    route: '/apps/moon-patrol',
+  },
+];
+
 export default function AppsScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -129,6 +143,30 @@ export default function AppsScreen() {
             <Text style={styles.appDesc}>{app.description}</Text>
           </View>
           <Text style={[styles.arrow, { color: app.color }]}>›</Text>
+        </TouchableOpacity>
+      ))}
+
+      {/* Games */}
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>GAMES</Text>
+        <Text style={styles.sectionCount}>{GAMES.length} game{GAMES.length !== 1 ? 's' : ''}</Text>
+      </View>
+
+      {GAMES.map(game => (
+        <TouchableOpacity
+          key={game.id}
+          style={[styles.appCard, { borderColor: game.color + '30' }]}
+          onPress={() => router.push(game.route as any)}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.iconWrap, { backgroundColor: game.color + '18' }]}>
+            <Text style={styles.icon}>{game.icon}</Text>
+          </View>
+          <View style={styles.appInfo}>
+            <Text style={styles.appName}>{game.name}</Text>
+            <Text style={styles.appDesc}>{game.description}</Text>
+          </View>
+          <Text style={[styles.arrow, { color: game.color }]}>›</Text>
         </TouchableOpacity>
       ))}
 
@@ -188,187 +226,189 @@ export default function AppsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.dark.background,
-  },
-  content: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  banner: {
-    flexDirection: 'row',
-    backgroundColor: Colors.primary + '12',
-    borderRadius: 16,
-    padding: 18,
-    gap: 14,
-    borderWidth: 1,
-    borderColor: Colors.primary + '25',
-    marginBottom: 24,
-  },
-  bannerIcon: {
-    fontSize: 32,
-  },
-  bannerContent: {
-    flex: 1,
-  },
-  bannerTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  bannerText: {
-    fontSize: 13,
-    color: Colors.dark.textSecondary,
-    lineHeight: 19,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: Colors.dark.textSecondary,
-    letterSpacing: 1.5,
-  },
-  sectionCount: {
-    fontSize: 12,
-    color: Colors.dark.textSecondary,
-    opacity: 0.6,
-  },
-  appCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.dark.surface,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 10,
-    borderWidth: 1,
-    gap: 14,
-  },
-  iconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  icon: {
-    fontSize: 24,
-  },
-  appInfo: {
-    flex: 1,
-  },
-  appName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.dark.text,
-    marginBottom: 3,
-  },
-  appDesc: {
-    fontSize: 13,
-    color: Colors.dark.textSecondary,
-    lineHeight: 18,
-  },
-  arrow: {
-    fontSize: 28,
-    fontWeight: '300',
-  },
-  ctaCard: {
-    backgroundColor: Colors.dark.surface,
-    borderRadius: 16,
-    padding: 20,
-    marginTop: 14,
-    borderWidth: 1,
-    borderColor: Colors.dark.surfaceBorder,
-  },
-  ctaRow: {
-    flexDirection: 'row',
-    gap: 14,
-  },
-  ctaEmoji: {
-    fontSize: 28,
-  },
-  ctaContent: {
-    flex: 1,
-  },
-  ctaTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: Colors.primary,
-    marginBottom: 6,
-  },
-  ctaText: {
-    fontSize: 13,
-    color: Colors.dark.textSecondary,
-    lineHeight: 20,
-  },
-  ctaButton: {
-    backgroundColor: Colors.primary,
-    borderRadius: 10,
-    paddingVertical: 13,
-    alignItems: 'center',
-    marginTop: 16,
-  },
-  ctaButtonText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 15,
-  },
-  howSection: {
-    marginTop: 28,
-    backgroundColor: Colors.dark.surface,
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: Colors.dark.surfaceBorder,
-  },
-  howTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.dark.text,
-    marginBottom: 20,
-  },
-  step: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-  },
-  stepDot: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  stepNum: {
-    color: '#fff',
-    fontWeight: '800',
-    fontSize: 14,
-  },
-  stepContent: {
-    flex: 1,
-  },
-  stepTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: Colors.dark.text,
-  },
-  stepText: {
-    fontSize: 13,
-    color: Colors.dark.textSecondary,
-    marginTop: 2,
-  },
-  stepLine: {
-    width: 2,
-    height: 20,
-    backgroundColor: Colors.dark.surfaceBorder,
-    marginLeft: 15,
-    marginVertical: 4,
-  },
-});
+function getStyles(colors: any) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    content: {
+      padding: 20,
+      paddingBottom: 40,
+    },
+    banner: {
+      flexDirection: 'row',
+      backgroundColor: Colors.primary + '12',
+      borderRadius: 16,
+      padding: 18,
+      gap: 14,
+      borderWidth: 1,
+      borderColor: Colors.primary + '25',
+      marginBottom: 24,
+    },
+    bannerIcon: {
+      fontSize: 32,
+    },
+    bannerContent: {
+      flex: 1,
+    },
+    bannerTitle: {
+      fontSize: 17,
+      fontWeight: '800',
+      color: colors.text,
+      marginBottom: 4,
+    },
+    bannerText: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      lineHeight: 19,
+    },
+    sectionHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 14,
+    },
+    sectionTitle: {
+      fontSize: 12,
+      fontWeight: '800',
+      color: colors.textSecondary,
+      letterSpacing: 1.5,
+    },
+    sectionCount: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      opacity: 0.6,
+    },
+    appCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 10,
+      borderWidth: 1,
+      gap: 14,
+    },
+    iconWrap: {
+      width: 48,
+      height: 48,
+      borderRadius: 14,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    icon: {
+      fontSize: 24,
+    },
+    appInfo: {
+      flex: 1,
+    },
+    appName: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.text,
+      marginBottom: 3,
+    },
+    appDesc: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      lineHeight: 18,
+    },
+    arrow: {
+      fontSize: 28,
+      fontWeight: '300',
+    },
+    ctaCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 20,
+      marginTop: 14,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+    },
+    ctaRow: {
+      flexDirection: 'row',
+      gap: 14,
+    },
+    ctaEmoji: {
+      fontSize: 28,
+    },
+    ctaContent: {
+      flex: 1,
+    },
+    ctaTitle: {
+      fontSize: 17,
+      fontWeight: '700',
+      color: Colors.primary,
+      marginBottom: 6,
+    },
+    ctaText: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      lineHeight: 20,
+    },
+    ctaButton: {
+      backgroundColor: Colors.primary,
+      borderRadius: 10,
+      paddingVertical: 13,
+      alignItems: 'center',
+      marginTop: 16,
+    },
+    ctaButtonText: {
+      color: '#fff',
+      fontWeight: '700',
+      fontSize: 15,
+    },
+    howSection: {
+      marginTop: 28,
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 20,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+    },
+    howTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.text,
+      marginBottom: 20,
+    },
+    step: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 14,
+    },
+    stepDot: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    stepNum: {
+      color: '#fff',
+      fontWeight: '800',
+      fontSize: 14,
+    },
+    stepContent: {
+      flex: 1,
+    },
+    stepTitle: {
+      fontSize: 15,
+      fontWeight: '700',
+      color: colors.text,
+    },
+    stepText: {
+      fontSize: 13,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    stepLine: {
+      width: 2,
+      height: 20,
+      backgroundColor: colors.surfaceBorder,
+      marginLeft: 15,
+      marginVertical: 4,
+    },
+  });
+}

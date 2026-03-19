@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Colors from '../../constants/Colors';
+import { useTheme } from '../../lib/ThemeContext';
 
 interface Note {
   id: string;
@@ -40,6 +41,9 @@ function timeAgo(date: string): string {
 }
 
 export default function NotesScreen() {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
+
   const [notes, setNotes] = useState<Note[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [editing, setEditing] = useState<Note | null>(null);
@@ -166,7 +170,7 @@ export default function NotesScreen() {
                       <Text style={styles.actionText}>{editing.pinned ? '📌' : 'Pin'}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => deleteNote(editing.id)} style={styles.actionBtn}>
-                      <Text style={[styles.actionText, { color: Colors.dark.error }]}>Delete</Text>
+                      <Text style={[styles.actionText, { color: colors.error }]}>Delete</Text>
                     </TouchableOpacity>
                   </>
                 )}
@@ -201,51 +205,53 @@ export default function NotesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.dark.background },
-  searchBar: { paddingHorizontal: 16, paddingVertical: 12 },
-  searchInput: {
-    backgroundColor: Colors.dark.surface, borderRadius: 12, padding: 14,
-    fontSize: 15, color: Colors.dark.text, borderWidth: 1, borderColor: Colors.dark.surfaceBorder,
-  },
-  grid: { paddingHorizontal: 12, paddingBottom: 100 },
-  row: { gap: 10, paddingHorizontal: 4 },
-  noteCard: {
-    flex: 1, borderRadius: 14, padding: 14, marginBottom: 10, minHeight: 120,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
-  },
-  pin: { fontSize: 12, marginBottom: 4 },
-  noteTitle: { fontSize: 15, fontWeight: '700', color: '#fff', marginBottom: 6 },
-  noteBody: { fontSize: 13, color: 'rgba(255,255,255,0.7)', lineHeight: 18 },
-  noteTime: { fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 10 },
-  empty: { alignItems: 'center', paddingTop: 80 },
-  emptyIcon: { fontSize: 48, marginBottom: 12 },
-  emptyText: { fontSize: 18, fontWeight: '600', color: Colors.dark.text },
-  emptySub: { fontSize: 14, color: Colors.dark.textSecondary, marginTop: 4 },
-  fab: {
-    position: 'absolute', bottom: 24, right: 24, width: 56, height: 56, borderRadius: 28,
-    backgroundColor: '#34d399', justifyContent: 'center', alignItems: 'center',
-    shadowColor: '#34d399', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 8,
-  },
-  fabText: { fontSize: 28, color: '#fff' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-  modalContent: {
-    backgroundColor: Colors.dark.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    padding: 24, paddingBottom: 40, maxHeight: '85%', borderWidth: 1,
-    borderColor: Colors.dark.surfaceBorder, borderBottomWidth: 0,
-  },
-  editorHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  modalTitle: { fontSize: 20, fontWeight: '700', color: Colors.dark.text },
-  editorActions: { flexDirection: 'row', gap: 12 },
-  actionBtn: { padding: 6 },
-  actionText: { fontSize: 14, fontWeight: '600', color: Colors.dark.textSecondary },
-  titleInput: {
-    fontSize: 20, fontWeight: '700', color: Colors.dark.text, paddingVertical: 8,
-    borderBottomWidth: 1, borderBottomColor: Colors.dark.surfaceBorder, marginBottom: 12,
-  },
-  bodyInput: {
-    fontSize: 16, color: Colors.dark.text, minHeight: 200, lineHeight: 24,
-  },
-  saveBtn: { backgroundColor: '#34d399', borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 16 },
-  saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-});
+function getStyles(colors: any) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    searchBar: { paddingHorizontal: 16, paddingVertical: 12 },
+    searchInput: {
+      backgroundColor: colors.surface, borderRadius: 12, padding: 14,
+      fontSize: 15, color: colors.text, borderWidth: 1, borderColor: colors.surfaceBorder,
+    },
+    grid: { paddingHorizontal: 12, paddingBottom: 100 },
+    row: { gap: 10, paddingHorizontal: 4 },
+    noteCard: {
+      flex: 1, borderRadius: 14, padding: 14, marginBottom: 10, minHeight: 120,
+      borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
+    },
+    pin: { fontSize: 12, marginBottom: 4 },
+    noteTitle: { fontSize: 15, fontWeight: '700', color: '#fff', marginBottom: 6 },
+    noteBody: { fontSize: 13, color: 'rgba(255,255,255,0.7)', lineHeight: 18 },
+    noteTime: { fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 10 },
+    empty: { alignItems: 'center', paddingTop: 80 },
+    emptyIcon: { fontSize: 48, marginBottom: 12 },
+    emptyText: { fontSize: 18, fontWeight: '600', color: colors.text },
+    emptySub: { fontSize: 14, color: colors.textSecondary, marginTop: 4 },
+    fab: {
+      position: 'absolute', bottom: 24, right: 24, width: 56, height: 56, borderRadius: 28,
+      backgroundColor: '#34d399', justifyContent: 'center', alignItems: 'center',
+      shadowColor: '#34d399', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 8,
+    },
+    fabText: { fontSize: 28, color: '#fff' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+    modalContent: {
+      backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24,
+      padding: 24, paddingBottom: 40, maxHeight: '85%', borderWidth: 1,
+      borderColor: colors.surfaceBorder, borderBottomWidth: 0,
+    },
+    editorHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+    modalTitle: { fontSize: 20, fontWeight: '700', color: colors.text },
+    editorActions: { flexDirection: 'row', gap: 12 },
+    actionBtn: { padding: 6 },
+    actionText: { fontSize: 14, fontWeight: '600', color: colors.textSecondary },
+    titleInput: {
+      fontSize: 20, fontWeight: '700', color: colors.text, paddingVertical: 8,
+      borderBottomWidth: 1, borderBottomColor: colors.surfaceBorder, marginBottom: 12,
+    },
+    bodyInput: {
+      fontSize: 16, color: colors.text, minHeight: 200, lineHeight: 24,
+    },
+    saveBtn: { backgroundColor: '#34d399', borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 16 },
+    saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  });
+}

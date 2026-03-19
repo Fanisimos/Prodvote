@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Colors from '../../constants/Colors';
+import { useTheme } from '../../lib/ThemeContext';
 
 interface JournalEntry {
   id: string;
@@ -44,6 +45,9 @@ function formatDate(dateStr: string): string {
 }
 
 export default function JournalScreen() {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
+
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [view, setView] = useState<'write' | 'list'>('write');
@@ -238,55 +242,57 @@ export default function JournalScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.dark.background },
-  toggle: {
-    flexDirection: 'row', margin: 16, backgroundColor: Colors.dark.surface,
-    borderRadius: 12, padding: 4, borderWidth: 1, borderColor: Colors.dark.surfaceBorder,
-  },
-  toggleBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center' },
-  toggleActive: { backgroundColor: Colors.primary },
-  toggleText: { fontSize: 14, fontWeight: '600', color: Colors.dark.textSecondary },
-  toggleTextActive: { color: '#fff' },
-  writeContent: { padding: 16, paddingBottom: 40 },
-  streakCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: Colors.dark.surface,
-    borderRadius: 14, padding: 16, marginBottom: 24, borderWidth: 1, borderColor: Colors.dark.surfaceBorder,
-  },
-  streakEmoji: { fontSize: 32 },
-  streakValue: { fontSize: 18, fontWeight: '800', color: Colors.primary },
-  streakLabel: { fontSize: 13, color: Colors.dark.textSecondary, marginTop: 2 },
-  moodRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24, gap: 6 },
-  moodBtn: {
-    flex: 1, alignItems: 'center', paddingVertical: 12, borderRadius: 12,
-    backgroundColor: Colors.dark.surface, borderWidth: 1, borderColor: Colors.dark.surfaceBorder,
-  },
-  moodSelected: { borderColor: Colors.primary, backgroundColor: Colors.primary + '15' },
-  moodEmoji: { fontSize: 24 },
-  moodLabel: { fontSize: 10, color: Colors.dark.textSecondary, marginTop: 4, fontWeight: '600' },
-  moodLabelActive: { color: Colors.primary },
-  promptLabel: {
-    fontSize: 14, fontWeight: '700', color: Colors.dark.text, marginBottom: 8,
-  },
-  promptInput: {
-    backgroundColor: Colors.dark.surface, borderWidth: 1, borderColor: Colors.dark.surfaceBorder,
-    borderRadius: 12, padding: 14, fontSize: 15, color: Colors.dark.text, marginBottom: 20, minHeight: 60,
-  },
-  saveBtn: { backgroundColor: '#a78bfa', borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 8 },
-  saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  listContent: { padding: 16, paddingBottom: 40 },
-  entryCard: {
-    backgroundColor: Colors.dark.surface, borderRadius: 14, padding: 16, marginBottom: 12,
-    borderWidth: 1, borderColor: Colors.dark.surfaceBorder,
-  },
-  entryHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  entryDate: { fontSize: 15, fontWeight: '700', color: Colors.dark.text },
-  entryMood: { fontSize: 24 },
-  entryField: { marginBottom: 10 },
-  fieldLabel: { fontSize: 11, fontWeight: '700', color: Colors.dark.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 },
-  fieldText: { fontSize: 14, color: Colors.dark.text, lineHeight: 20 },
-  empty: { alignItems: 'center', paddingTop: 60 },
-  emptyIcon: { fontSize: 48, marginBottom: 12 },
-  emptyText: { fontSize: 18, fontWeight: '600', color: Colors.dark.text },
-  emptySub: { fontSize: 14, color: Colors.dark.textSecondary, marginTop: 4 },
-});
+function getStyles(colors: any) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    toggle: {
+      flexDirection: 'row', margin: 16, backgroundColor: colors.surface,
+      borderRadius: 12, padding: 4, borderWidth: 1, borderColor: colors.surfaceBorder,
+    },
+    toggleBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center' },
+    toggleActive: { backgroundColor: Colors.primary },
+    toggleText: { fontSize: 14, fontWeight: '600', color: colors.textSecondary },
+    toggleTextActive: { color: '#fff' },
+    writeContent: { padding: 16, paddingBottom: 40 },
+    streakCard: {
+      flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: colors.surface,
+      borderRadius: 14, padding: 16, marginBottom: 24, borderWidth: 1, borderColor: colors.surfaceBorder,
+    },
+    streakEmoji: { fontSize: 32 },
+    streakValue: { fontSize: 18, fontWeight: '800', color: Colors.primary },
+    streakLabel: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
+    moodRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24, gap: 6 },
+    moodBtn: {
+      flex: 1, alignItems: 'center', paddingVertical: 12, borderRadius: 12,
+      backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.surfaceBorder,
+    },
+    moodSelected: { borderColor: Colors.primary, backgroundColor: Colors.primary + '15' },
+    moodEmoji: { fontSize: 24 },
+    moodLabel: { fontSize: 10, color: colors.textSecondary, marginTop: 4, fontWeight: '600' },
+    moodLabelActive: { color: Colors.primary },
+    promptLabel: {
+      fontSize: 14, fontWeight: '700', color: colors.text, marginBottom: 8,
+    },
+    promptInput: {
+      backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.surfaceBorder,
+      borderRadius: 12, padding: 14, fontSize: 15, color: colors.text, marginBottom: 20, minHeight: 60,
+    },
+    saveBtn: { backgroundColor: '#a78bfa', borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 8 },
+    saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+    listContent: { padding: 16, paddingBottom: 40 },
+    entryCard: {
+      backgroundColor: colors.surface, borderRadius: 14, padding: 16, marginBottom: 12,
+      borderWidth: 1, borderColor: colors.surfaceBorder,
+    },
+    entryHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+    entryDate: { fontSize: 15, fontWeight: '700', color: colors.text },
+    entryMood: { fontSize: 24 },
+    entryField: { marginBottom: 10 },
+    fieldLabel: { fontSize: 11, fontWeight: '700', color: colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 },
+    fieldText: { fontSize: 14, color: colors.text, lineHeight: 20 },
+    empty: { alignItems: 'center', paddingTop: 60 },
+    emptyIcon: { fontSize: 48, marginBottom: 12 },
+    emptyText: { fontSize: 18, fontWeight: '600', color: colors.text },
+    emptySub: { fontSize: 14, color: colors.textSecondary, marginTop: 4 },
+  });
+}

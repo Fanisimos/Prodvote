@@ -1,4 +1,4 @@
-export type Tier = 'free' | 'basic' | 'pro';
+export type Tier = 'free' | 'pro' | 'ultra' | 'legendary';
 
 export type FeatureStatus = 'open' | 'under_review' | 'planned' | 'in_progress' | 'shipped' | 'declined';
 
@@ -9,8 +9,12 @@ export interface Profile {
   tier: Tier;
   votes_remaining: number;
   boosts_remaining: number;
+  coins: number;
   is_banned: boolean;
   created_at: string;
+  last_login_date: string | null;
+  login_streak: number;
+  active_badge_id: number | null;
 }
 
 export interface Category {
@@ -32,6 +36,7 @@ export interface Feature {
   comment_count: number;
   is_boosted: boolean;
   dev_response: string | null;
+  dev_hearted: boolean;
   created_at: string;
   shipped_at: string | null;
   // Joined fields
@@ -44,6 +49,7 @@ export interface Feature {
   boost_count?: number;
   // Client-side
   user_has_voted?: boolean;
+  awards?: { emoji: string; name: string; color: string; count: number }[];
 }
 
 export interface Vote {
@@ -60,9 +66,27 @@ export interface Comment {
   user_id: string;
   body: string;
   is_dev_reply: boolean;
+  dev_hearted: boolean;
+  badge_id: number | null;
   created_at: string;
   // Joined
   username?: string;
   avatar_url?: string | null;
   tier?: Tier;
+  badge_emoji?: string;
+  badge_name?: string;
+  badge_color?: string;
+  // Awards given to this comment
+  awards?: { emoji: string; name: string; color: string; count: number }[];
+}
+
+export interface Badge {
+  id: number;
+  name: string;
+  emoji: string;
+  description: string;
+  price: number;
+  color: string;
+  is_active: boolean;
+  owned?: boolean;
 }

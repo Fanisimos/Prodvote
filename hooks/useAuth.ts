@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Profile } from '../lib/types';
 import { Session } from '@supabase/supabase-js';
+import { initPurchases } from '../lib/purchases';
+import { registerForPushNotifications, scheduleDailyReminder } from '../lib/notifications';
 
 export function useAuth() {
   const [session, setSession] = useState<Session | null>(null);
@@ -35,6 +37,13 @@ export function useAuth() {
       .single();
     setProfile(data);
     setLoading(false);
+
+    // Initialize RevenueCat with user ID
+    initPurchases(userId);
+
+    // Register for push notifications
+    registerForPushNotifications(userId);
+    scheduleDailyReminder();
   }
 
   async function signUp(email: string, password: string, username: string) {

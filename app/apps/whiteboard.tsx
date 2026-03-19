@@ -7,15 +7,19 @@ import {
   Platform,
 } from 'react-native';
 import Colors from '../../constants/Colors';
+import { useTheme } from '../../lib/ThemeContext';
 
 interface Point { x: number; y: number; }
 interface Stroke { points: Point[]; color: string; width: number; }
 
 const COLORS = ['#ffffff', '#7c5cfc', '#ff4d6a', '#ffb347', '#34d399', '#4dc9f6', '#a78bfa', '#f472b6'];
 const WIDTHS = [2, 4, 8, 14];
-const BG = Colors.dark.background;
 
 export default function WhiteboardScreen() {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
+  const BG = colors.background;
+
   const [currentColor, setCurrentColor] = useState('#ffffff');
   const [currentWidth, setCurrentWidth] = useState(4);
   const [isEraser, setIsEraser] = useState(false);
@@ -262,34 +266,36 @@ export default function WhiteboardScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.dark.background },
-  canvasWrap: { flex: 1 },
-  nativeCanvas: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  canvasPlaceholder: { fontSize: 16, color: Colors.dark.textSecondary, opacity: 0.5 },
-  toolbar: {
-    position: 'absolute', bottom: 30, alignSelf: 'center', flexDirection: 'row',
-    backgroundColor: Colors.dark.surface, borderRadius: 20, paddingHorizontal: 8,
-    paddingVertical: 6, gap: 2, borderWidth: 1, borderColor: Colors.dark.surfaceBorder,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 20, elevation: 10,
-  },
-  toolBtn: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
-  toolActive: { backgroundColor: Colors.primary + '30' },
-  toolIcon: { fontSize: 20 },
-  toolDivider: { width: 1, height: 28, backgroundColor: Colors.dark.surfaceBorder, marginHorizontal: 4, alignSelf: 'center' },
-  pickerPanel: {
-    position: 'absolute', bottom: 100, alignSelf: 'center', backgroundColor: Colors.dark.surface,
-    borderRadius: 20, padding: 18, borderWidth: 1, borderColor: Colors.dark.surfaceBorder,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 20, elevation: 10,
-  },
-  pickerLabel: { fontSize: 10, fontWeight: '800', color: Colors.dark.textSecondary, letterSpacing: 1.5, marginBottom: 10 },
-  colorRow: { flexDirection: 'row', gap: 10 },
-  colorDot: { width: 30, height: 30, borderRadius: 15, borderWidth: 3, borderColor: 'transparent' },
-  colorActive: { borderColor: Colors.primary },
-  widthRow: { flexDirection: 'row', gap: 8 },
-  widthBtn: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.dark.background },
-  widthActive: { backgroundColor: Colors.primary + '30', borderWidth: 1, borderColor: Colors.primary },
-  widthDot: { backgroundColor: '#fff' },
-  counter: { position: 'absolute', top: 16, right: 16, backgroundColor: Colors.dark.surface + 'cc', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6 },
-  counterText: { fontSize: 12, color: Colors.dark.textSecondary, fontWeight: '600' },
-});
+function getStyles(colors: any) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.background },
+    canvasWrap: { flex: 1 },
+    nativeCanvas: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    canvasPlaceholder: { fontSize: 16, color: colors.textSecondary, opacity: 0.5 },
+    toolbar: {
+      position: 'absolute', bottom: 30, alignSelf: 'center', flexDirection: 'row',
+      backgroundColor: colors.surface, borderRadius: 20, paddingHorizontal: 8,
+      paddingVertical: 6, gap: 2, borderWidth: 1, borderColor: colors.surfaceBorder,
+      shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 20, elevation: 10,
+    },
+    toolBtn: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+    toolActive: { backgroundColor: Colors.primary + '30' },
+    toolIcon: { fontSize: 20 },
+    toolDivider: { width: 1, height: 28, backgroundColor: colors.surfaceBorder, marginHorizontal: 4, alignSelf: 'center' },
+    pickerPanel: {
+      position: 'absolute', bottom: 100, alignSelf: 'center', backgroundColor: colors.surface,
+      borderRadius: 20, padding: 18, borderWidth: 1, borderColor: colors.surfaceBorder,
+      shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 20, elevation: 10,
+    },
+    pickerLabel: { fontSize: 10, fontWeight: '800', color: colors.textSecondary, letterSpacing: 1.5, marginBottom: 10 },
+    colorRow: { flexDirection: 'row', gap: 10 },
+    colorDot: { width: 30, height: 30, borderRadius: 15, borderWidth: 3, borderColor: 'transparent' },
+    colorActive: { borderColor: Colors.primary },
+    widthRow: { flexDirection: 'row', gap: 8 },
+    widthBtn: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
+    widthActive: { backgroundColor: Colors.primary + '30', borderWidth: 1, borderColor: Colors.primary },
+    widthDot: { backgroundColor: '#fff' },
+    counter: { position: 'absolute', top: 16, right: 16, backgroundColor: colors.surface + 'cc', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 6 },
+    counterText: { fontSize: 12, color: colors.textSecondary, fontWeight: '600' },
+  });
+}

@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Colors from '../../constants/Colors';
+import { useTheme } from '../../lib/ThemeContext';
 
 type Mode = 'focus' | 'short_break' | 'long_break';
 
@@ -27,6 +28,9 @@ const MODE_CONFIG: Record<Mode, { label: string; color: string; icon: string }> 
 const STATS_KEY = 'prodvote_pomodoro_stats';
 
 export default function PomodoroScreen() {
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
+
   const [mode, setMode] = useState<Mode>('focus');
   const [seconds, setSeconds] = useState(DURATIONS.focus);
   const [running, setRunning] = useState(false);
@@ -198,7 +202,7 @@ export default function PomodoroScreen() {
             key={i}
             style={[
               styles.dot,
-              { backgroundColor: i < (todaySessions % 4) ? config.color : Colors.dark.surfaceBorder },
+              { backgroundColor: i < (todaySessions % 4) ? config.color : colors.surfaceBorder },
             ]}
           />
         ))}
@@ -208,148 +212,150 @@ export default function PomodoroScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.dark.background,
-    alignItems: 'center',
-    paddingTop: 16,
-  },
-  modePicker: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 20,
-  },
-  modeButton: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: Colors.dark.surfaceBorder,
-  },
-  modeText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Colors.dark.textSecondary,
-  },
-  timerSection: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  timerRing: {
-    width: 260,
-    height: 260,
-    borderRadius: 130,
-    borderWidth: 4,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  progressOverlay: {
-    position: 'absolute',
-    width: 260,
-    height: 260,
-    borderRadius: 130,
-  },
-  timerText: {
-    fontSize: 64,
-    fontWeight: '200',
-    letterSpacing: 2,
-  },
-  timerLabel: {
-    fontSize: 14,
-    color: Colors.dark.textSecondary,
-    marginTop: 8,
-    textTransform: 'uppercase',
-    letterSpacing: 2,
-  },
-  controls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 20,
-    marginBottom: 40,
-  },
-  resetBtn: {
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.dark.surfaceBorder,
-  },
-  resetText: {
-    color: Colors.dark.textSecondary,
-    fontWeight: '600',
-    fontSize: 15,
-  },
-  mainBtn: {
-    paddingHorizontal: 48,
-    paddingVertical: 18,
-    borderRadius: 16,
-  },
-  mainBtnText: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: '800',
-  },
-  skipBtn: {
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.dark.surfaceBorder,
-  },
-  skipText: {
-    color: Colors.dark.textSecondary,
-    fontWeight: '600',
-    fontSize: 15,
-  },
-  statsCard: {
-    flexDirection: 'row',
-    backgroundColor: Colors.dark.surface,
-    borderRadius: 16,
-    padding: 18,
-    marginHorizontal: 24,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: Colors.dark.surfaceBorder,
-    width: '90%',
-    maxWidth: 400,
-  },
-  stat: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: Colors.primary,
-  },
-  statLabel: {
-    fontSize: 11,
-    color: Colors.dark.textSecondary,
-    marginTop: 4,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  statDivider: {
-    width: 1,
-    backgroundColor: Colors.dark.surfaceBorder,
-  },
-  sessionDots: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 32,
-  },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  dotLabel: {
-    fontSize: 12,
-    color: Colors.dark.textSecondary,
-    marginLeft: 4,
-    opacity: 0.6,
-  },
-});
+function getStyles(colors: any) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+      alignItems: 'center',
+      paddingTop: 16,
+    },
+    modePicker: {
+      flexDirection: 'row',
+      gap: 8,
+      paddingHorizontal: 20,
+    },
+    modeButton: {
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+    },
+    modeText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    timerSection: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    timerRing: {
+      width: 260,
+      height: 260,
+      borderRadius: 130,
+      borderWidth: 4,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    progressOverlay: {
+      position: 'absolute',
+      width: 260,
+      height: 260,
+      borderRadius: 130,
+    },
+    timerText: {
+      fontSize: 64,
+      fontWeight: '200',
+      letterSpacing: 2,
+    },
+    timerLabel: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginTop: 8,
+      textTransform: 'uppercase',
+      letterSpacing: 2,
+    },
+    controls: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 20,
+      marginBottom: 40,
+    },
+    resetBtn: {
+      paddingHorizontal: 20,
+      paddingVertical: 14,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+    },
+    resetText: {
+      color: colors.textSecondary,
+      fontWeight: '600',
+      fontSize: 15,
+    },
+    mainBtn: {
+      paddingHorizontal: 48,
+      paddingVertical: 18,
+      borderRadius: 16,
+    },
+    mainBtnText: {
+      color: '#fff',
+      fontSize: 20,
+      fontWeight: '800',
+    },
+    skipBtn: {
+      paddingHorizontal: 20,
+      paddingVertical: 14,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+    },
+    skipText: {
+      color: colors.textSecondary,
+      fontWeight: '600',
+      fontSize: 15,
+    },
+    statsCard: {
+      flexDirection: 'row',
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      padding: 18,
+      marginHorizontal: 24,
+      marginBottom: 20,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+      width: '90%',
+      maxWidth: 400,
+    },
+    stat: {
+      flex: 1,
+      alignItems: 'center',
+    },
+    statValue: {
+      fontSize: 24,
+      fontWeight: '800',
+      color: Colors.primary,
+    },
+    statLabel: {
+      fontSize: 11,
+      color: colors.textSecondary,
+      marginTop: 4,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    statDivider: {
+      width: 1,
+      backgroundColor: colors.surfaceBorder,
+    },
+    sessionDots: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginBottom: 32,
+    },
+    dot: {
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+    },
+    dotLabel: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      marginLeft: 4,
+      opacity: 0.6,
+    },
+  });
+}

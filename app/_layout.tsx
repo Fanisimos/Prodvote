@@ -2,9 +2,12 @@ import { useEffect } from 'react';
 import { Slot, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuthContext } from '../lib/AuthContext';
+import { ThemeProvider, useTheme } from '../lib/ThemeContext';
+
+const ADMIN_EMAILS = ['tzoni@litsaitechnologies.com'];
 
 function RootNavigation() {
-  const { session, loading } = useAuthContext();
+  const { session, profile, loading } = useAuthContext();
   const segments = useSegments();
   const router = useRouter();
 
@@ -12,17 +15,25 @@ function RootNavigation() {
     if (loading) return;
 
     const inAuth = segments[0] === '(auth)';
+    const inAdmin = segments[0] === '(admin)';
+    const isAdmin = session?.user?.email && ADMIN_EMAILS.includes(session.user.email);
 
     if (!session && !inAuth) {
       router.replace('/(auth)/login');
     } else if (session && inAuth) {
-      router.replace('/(tabs)');
+      if (isAdmin) {
+        router.replace('/(admin)/dashboard');
+      } else {
+        router.replace('/(tabs)');
+      }
     }
   }, [session, loading, segments]);
 
+  const { isDark } = useTheme();
+
   return (
     <>
-      <StatusBar style="auto" />
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       <Slot />
     </>
   );
@@ -30,8 +41,10 @@ function RootNavigation() {
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <RootNavigation />
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <RootNavigation />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

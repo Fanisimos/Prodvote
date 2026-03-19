@@ -14,11 +14,15 @@ import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../lib/AuthContext';
 import { useCategories } from '../../hooks/useFeatures';
+import { awardCoins } from '../../lib/coinRewards';
 import Colors from '../../constants/Colors';
+import { useTheme } from '../../lib/ThemeContext';
 
 export default function SubmitScreen() {
   const router = useRouter();
   const { session, profile } = useAuthContext();
+  const { colors } = useTheme();
+  const styles = getStyles(colors);
   const categories = useCategories();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -58,6 +62,8 @@ export default function SubmitScreen() {
       return;
     }
 
+    awardCoins(session.user.id, 'feature_submitted'); // +15 coins
+
     setTitle('');
     setDescription('');
     setCategoryId(1);
@@ -77,7 +83,7 @@ export default function SubmitScreen() {
       <TextInput
         style={styles.input}
         placeholder="e.g. Add dark mode support"
-        placeholderTextColor="#64748b"
+        placeholderTextColor={colors.textSecondary}
         value={title}
         onChangeText={setTitle}
         maxLength={120}
@@ -88,7 +94,7 @@ export default function SubmitScreen() {
       <TextInput
         style={[styles.input, styles.textArea]}
         placeholder="Describe the feature and why it matters..."
-        placeholderTextColor="#64748b"
+        placeholderTextColor={colors.textSecondary}
         value={description}
         onChangeText={setDescription}
         multiline
@@ -145,93 +151,95 @@ export default function SubmitScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.dark.background,
-  },
-  content: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Colors.dark.text,
-    marginBottom: 8,
-    marginTop: 20,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  input: {
-    backgroundColor: Colors.dark.surface,
-    borderWidth: 1,
-    borderColor: Colors.dark.surfaceBorder,
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    color: Colors.dark.text,
-  },
-  textArea: {
-    minHeight: 120,
-  },
-  charCount: {
-    fontSize: 12,
-    color: Colors.dark.textSecondary,
-    textAlign: 'right',
-    marginTop: 4,
-  },
-  categories: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  categoryChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: Colors.dark.surfaceBorder,
-    backgroundColor: Colors.dark.surface,
-  },
-  categoryChipText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Colors.dark.textSecondary,
-  },
-  infoBox: {
-    backgroundColor: Colors.dark.surface,
-    borderRadius: 12,
-    padding: 14,
-    marginTop: 24,
-  },
-  infoText: {
-    color: Colors.dark.textSecondary,
-    fontSize: 13,
-  },
-  infoBold: {
-    color: Colors.primary,
-    fontWeight: '700',
-  },
-  error: {
-    color: Colors.dark.error,
-    fontSize: 14,
-    textAlign: 'center',
-    marginTop: 16,
-  },
-  submitButton: {
-    backgroundColor: Colors.primary,
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    marginTop: 24,
-  },
-  submitDisabled: {
-    opacity: 0.6,
-  },
-  submitText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-});
+function getStyles(colors: any) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    content: {
+      padding: 20,
+      paddingBottom: 40,
+    },
+    label: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: colors.text,
+      marginBottom: 8,
+      marginTop: 20,
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    input: {
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+      borderRadius: 12,
+      padding: 16,
+      fontSize: 16,
+      color: colors.text,
+    },
+    textArea: {
+      minHeight: 120,
+    },
+    charCount: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      textAlign: 'right',
+      marginTop: 4,
+    },
+    categories: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    categoryChip: {
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.surfaceBorder,
+      backgroundColor: colors.surface,
+    },
+    categoryChipText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    infoBox: {
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      padding: 14,
+      marginTop: 24,
+    },
+    infoText: {
+      color: colors.textSecondary,
+      fontSize: 13,
+    },
+    infoBold: {
+      color: Colors.primary,
+      fontWeight: '700',
+    },
+    error: {
+      color: colors.error,
+      fontSize: 14,
+      textAlign: 'center',
+      marginTop: 16,
+    },
+    submitButton: {
+      backgroundColor: Colors.primary,
+      borderRadius: 12,
+      padding: 16,
+      alignItems: 'center',
+      marginTop: 24,
+    },
+    submitDisabled: {
+      opacity: 0.6,
+    },
+    submitText: {
+      color: '#fff',
+      fontSize: 18,
+      fontWeight: '700',
+    },
+  });
+}
