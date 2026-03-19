@@ -219,6 +219,7 @@ export default function ChatRoomScreen() {
                         tierColor={tierColor}
                         frameType={item.active_frame_type}
                         frameColor={item.active_frame_color}
+                        imageUri={item.avatar_url}
                       />
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => router.push(`/profile/${item.user_id}`)}>

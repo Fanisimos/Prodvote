@@ -47,6 +47,7 @@ export default function PublicProfileScreen() {
           tierColor={tier.color}
           frameType={profile.active_frame_type}
           frameColor={profile.active_frame_color}
+          imageUri={profile.avatar_url}
         />
         <Text style={styles.username}>@{profile.username}</Text>
         <View style={styles.badgeRow}>

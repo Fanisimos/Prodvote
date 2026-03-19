@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { View, Text, Animated, Easing, StyleSheet } from 'react-native';
+import { View, Text, Image, Animated, Easing, StyleSheet } from 'react-native';
 import Colors from '../constants/Colors';
 
 interface AnimatedAvatarProps {
@@ -8,6 +8,7 @@ interface AnimatedAvatarProps {
   tierColor?: string;
   frameType?: string | null;
   frameColor?: string | null;
+  imageUri?: string | null;
 }
 
 export default function AnimatedAvatar({
@@ -16,6 +17,7 @@ export default function AnimatedAvatar({
   tierColor = Colors.primary,
   frameType,
   frameColor,
+  imageUri,
 }: AnimatedAvatarProps) {
   // Shared animation values (7 general + 5 extra for challenger)
   const anim1 = useRef(new Animated.Value(0)).current;
@@ -776,12 +778,20 @@ export default function AnimatedAvatar({
             borderRadius: halfSize,
             borderColor: frameType ? color : tierColor,
             backgroundColor: Colors.primary,
+            overflow: 'hidden',
           },
         ]}
       >
-        <Text style={[s.avatarText, { fontSize: size * 0.37 }]}>
-          {letter}
-        </Text>
+        {imageUri ? (
+          <Image
+            source={{ uri: imageUri }}
+            style={{ width: size - 6, height: size - 6, borderRadius: (size - 6) / 2 }}
+          />
+        ) : (
+          <Text style={[s.avatarText, { fontSize: size * 0.37 }]}>
+            {letter}
+          </Text>
+        )}
       </View>
     </View>
   );

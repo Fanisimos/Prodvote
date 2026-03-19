@@ -227,6 +227,7 @@ export default function FeatureDetailScreen() {
                     tierColor={TIER_COLORS[item.tier || 'free'] || '#94a3b8'}
                     frameType={item.active_frame_type}
                     frameColor={item.active_frame_color}
+                    imageUri={item.avatar_url}
                   />
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => router.push(`/profile/${item.user_id}`)}>

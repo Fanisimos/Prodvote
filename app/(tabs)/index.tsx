@@ -126,7 +126,7 @@ function FeatureCard({
                 boxShadow: `0 0 8px ${TIER_BADGES[item.author_tier].color}60, 0 0 16px ${TIER_BADGES[item.author_tier].color}30`,
               },
             ]}>
-              <Text style={styles.tierGlowText}>
+              <Text style={[styles.tierGlowText, { color: TIER_BADGES[item.author_tier].color }]}>
                 {TIER_BADGES[item.author_tier].emoji} {TIER_BADGES[item.author_tier].label}
               </Text>
             </View>

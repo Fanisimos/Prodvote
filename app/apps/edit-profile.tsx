@@ -12,6 +12,7 @@ import {
   KeyboardAvoidingView,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import { useAuthContext } from '../../lib/AuthContext';
 import { useTheme } from '../../lib/ThemeContext';
 import { supabase } from '../../lib/supabase';
@@ -42,6 +43,8 @@ export default function EditProfileScreen() {
   const router = useRouter();
 
   const [username, setUsername] = useState(profile?.username ?? '');
+  const [avatarUri, setAvatarUri] = useState<string | null>(profile?.avatar_url ?? null);
+  const [avatarChanged, setAvatarChanged] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -78,6 +81,55 @@ export default function EditProfileScreen() {
     setSuccess(false);
   }
 
+  async function pickImage() {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      showAlert('Permission needed', 'Please allow access to your photo library.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      setAvatarUri(result.assets[0].uri);
+      setAvatarChanged(true);
+      setSuccess(false);
+    }
+  }
+
+  async function uploadAvatar(): Promise<string | null> {
+    if (!avatarUri || !avatarChanged) return profile?.avatar_url ?? null;
+
+    const ext = avatarUri.split('.').pop()?.toLowerCase() || 'jpg';
+    const fileName = `${session!.user.id}/${Date.now()}.${ext}`;
+
+    // Fetch the image as a blob
+    const response = await fetch(avatarUri);
+    const blob = await response.blob();
+
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(fileName, blob, {
+        contentType: `image/${ext === 'png' ? 'png' : 'jpeg'}`,
+        upsert: true,
+      });
+
+    if (uploadError) {
+      throw new Error(`Upload failed: ${uploadError.message}`);
+    }
+
+    const { data: urlData } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(fileName);
+
+    return urlData.publicUrl;
+  }
+
   async function handleSave() {
     const validationError = validateUsername(username.trim());
     if (validationError) {
@@ -88,8 +140,8 @@ export default function EditProfileScreen() {
     const trimmed = username.trim();
 
     // No changes made
-    if (trimmed === profile!.username) {
-      showAlert('No Changes', 'Your username is already set to this value.');
+    if (trimmed === profile!.username && !avatarChanged) {
+      showAlert('No Changes', 'Nothing has changed.');
       return;
     }
 
@@ -112,18 +164,31 @@ export default function EditProfileScreen() {
         return;
       }
 
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ username: trimmed })
-        .eq('id', session!.user.id);
+      // Upload avatar if changed
+      let newAvatarUrl = profile!.avatar_url;
+      if (avatarChanged) {
+        newAvatarUrl = await uploadAvatar();
+      }
 
-      if (updateError) {
-        setError(updateError.message);
-        setSaving(false);
-        return;
+      const updates: any = {};
+      if (trimmed !== profile!.username) updates.username = trimmed;
+      if (avatarChanged && newAvatarUrl !== profile!.avatar_url) updates.avatar_url = newAvatarUrl;
+
+      if (Object.keys(updates).length > 0) {
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update(updates)
+          .eq('id', session!.user.id);
+
+        if (updateError) {
+          setError(updateError.message);
+          setSaving(false);
+          return;
+        }
       }
 
       await fetchProfile(session!.user.id);
+      setAvatarChanged(false);
       setSuccess(true);
       showAlert('Success', 'Your profile has been updated.');
     } catch (e: any) {
@@ -144,14 +209,17 @@ export default function EditProfileScreen() {
       <Stack.Screen options={{ title: 'Edit Profile' }} />
       <ScrollView contentContainerStyle={styles.scroll}>
         {/* Avatar preview */}
-        <View style={styles.avatarSection}>
+        <TouchableOpacity style={styles.avatarSection} onPress={pickImage} activeOpacity={0.7}>
           <AnimatedAvatar
             letter={username.charAt(0)?.toUpperCase() || profile.username.charAt(0).toUpperCase()}
             size={88}
             tierColor={tier.color}
+            imageUri={avatarUri}
           />
-          <Text style={styles.avatarHint}>Avatar updates with your username initial</Text>
-        </View>
+          <View style={styles.avatarOverlay}>
+            <Text style={styles.avatarOverlayText}>Tap to change</Text>
+          </View>
+        </TouchableOpacity>
 
         {/* Username input */}
         <View style={styles.card}>
@@ -254,10 +322,17 @@ function getStyles(colors: any) {
       alignItems: 'center',
       paddingVertical: 24,
     },
-    avatarHint: {
+    avatarOverlay: {
+      marginTop: 10,
+      paddingHorizontal: 14,
+      paddingVertical: 6,
+      backgroundColor: Colors.primary + '18',
+      borderRadius: 12,
+    },
+    avatarOverlayText: {
       fontSize: 12,
-      color: colors.textSecondary,
-      marginTop: 12,
+      fontWeight: '600',
+      color: Colors.primary,
     },
 
     // Cards

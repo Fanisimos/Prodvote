@@ -25,7 +25,7 @@ const TIER_INFO: Record<string, { label: string; color: string; emoji: string; p
   free: { label: 'Free', color: '#94a3b8', emoji: '🆓', perks: '3 votes/mo · 0 coins/mo' },
   pro: { label: 'Pro', color: '#7c5cfc', emoji: '⚡', perks: '10 votes/mo · 300 coins/mo' },
   ultra: { label: 'Ultra', color: '#fbbf24', emoji: '👑', perks: '∞ votes · 1,000 coins/mo' },
-  legendary: { label: 'Legendary', color: '#ff4d6a', emoji: '🐐', perks: '∞ votes · 1,000 coins/mo · GOAT' },
+  legendary: { label: 'Legendary', color: '#ff4d6a', emoji: '🐐', perks: '∞ votes · 2,500 coins/mo · GOAT' },
 };
 
 const ADMIN_USERNAMES = ['Fanisimos', 'Fanisimos_ADMIN'];
@@ -88,6 +88,7 @@ export default function ProfileScreen() {
                   tierColor={tier.color}
                   frameType={activeFrame?.animation_type}
                   frameColor={activeFrame?.color}
+                  imageUri={profile.avatar_url}
                 />
               </TouchableOpacity>
               <Text style={styles.username}>@{profile.username}</Text>
@@ -260,31 +261,27 @@ export default function ProfileScreen() {
                   </TouchableOpacity>
                 )}
               </View>
-              {activeFrame && (
-                <View style={[styles.activeBadgeCard, { borderColor: activeFrame.color + '60' }]}>
-                  <AnimatedAvatar
-                    letter={profile.username.charAt(0).toUpperCase()}
-                    size={32}
-                    frameType={activeFrame.animation_type}
-                    frameColor={activeFrame.color}
-                  />
-                  <Text style={[styles.activeBadgeLabel, { color: activeFrame.color }]}>{activeFrame.name}</Text>
-                  <Text style={styles.activeBadgeTag}>ACTIVE</Text>
-                </View>
-              )}
               {ownedFrames.length > 0 ? (
                 <View style={styles.badgeGrid}>
-                  {ownedFrames.map(f => (
-                    <View key={f.id} style={[styles.frameGridCard, { borderColor: f.color + '40' }]}>
-                      <AnimatedAvatar
-                        letter={profile.username.charAt(0).toUpperCase()}
-                        size={28}
-                        frameType={f.animation_type}
-                        frameColor={f.color}
-                      />
-                      <Text style={styles.badgeCardName} numberOfLines={1}>{f.name}</Text>
-                    </View>
-                  ))}
+                  {ownedFrames.map(f => {
+                    const isActive = activeFrame?.id === f.id;
+                    return (
+                      <View key={f.id} style={[styles.frameGridCard, { borderColor: isActive ? '#34d399' : f.color + '40' }]}>
+                        {isActive && (
+                          <View style={styles.activeRibbon}>
+                            <Text style={styles.activeRibbonText}>ACTIVE</Text>
+                          </View>
+                        )}
+                        <AnimatedAvatar
+                          letter={profile.username.charAt(0).toUpperCase()}
+                          size={28}
+                          frameType={f.animation_type}
+                          frameColor={f.color}
+                        />
+                        <Text style={styles.badgeCardName} numberOfLines={1}>{f.name}</Text>
+                      </View>
+                    );
+                  })}
                 </View>
               ) : (
                 <TouchableOpacity
@@ -534,6 +531,14 @@ function getStyles(colors: any) {
     frameGridCard: {
       backgroundColor: colors.surface, borderRadius: 14, padding: 12,
       alignItems: 'center', width: 80, borderWidth: 1.5, gap: 6,
+      overflow: 'hidden',
+    },
+    activeRibbon: {
+      position: 'absolute', top: 0, left: 0, right: 0,
+      backgroundColor: '#34d399', paddingVertical: 2, alignItems: 'center',
+    },
+    activeRibbonText: {
+      fontSize: 8, fontWeight: '900', color: '#fff', letterSpacing: 0.8,
     },
     frameOptionPreview: { width: 48, height: 48, justifyContent: 'center', alignItems: 'center' },
     emptyFrameCard: {
