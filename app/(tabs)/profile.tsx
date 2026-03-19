@@ -91,6 +91,12 @@ export default function ProfileScreen() {
                 />
               </TouchableOpacity>
               <Text style={styles.username}>@{profile.username}</Text>
+              <TouchableOpacity
+                style={styles.editProfileBtn}
+                onPress={() => router.push('/apps/edit-profile')}
+              >
+                <Text style={styles.editProfileText}>Edit Profile</Text>
+              </TouchableOpacity>
               <View style={[styles.tierBadge, { backgroundColor: tier.color }]}>
                 <Text style={styles.tierText}>{tier.emoji} {tier.label}</Text>
               </View>
@@ -441,7 +447,9 @@ function getStyles(colors: any) {
       borderWidth: 3,
     },
     avatarText: { fontSize: 28, fontWeight: '800', color: '#fff' },
-    username: { fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: 8 },
+    username: { fontSize: 20, fontWeight: '700', color: colors.text, marginBottom: 6 },
+    editProfileBtn: { marginBottom: 8 },
+    editProfileText: { fontSize: 13, fontWeight: '600', color: Colors.primary },
     tierBadge: { paddingHorizontal: 14, paddingVertical: 5, borderRadius: 12 },
     tierText: { color: '#fff', fontWeight: '700', fontSize: 13 },
 

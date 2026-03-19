@@ -6,10 +6,42 @@ import { awardCoins } from '../lib/coinRewards';
 type SortBy = 'score' | 'newest' | 'comments';
 type FilterStatus = 'all' | 'open' | 'planned' | 'in_progress' | 'shipped';
 
+const PAGE_SIZE = 20;
+
 export function useFeatures(sortBy: SortBy = 'score', filterStatus: FilterStatus = 'all') {
   const [features, setFeatures] = useState<Feature[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [page, setPage] = useState(0);
+
+  const fetchAwards = useCallback(async (featureIds: string[]) => {
+    let awardsMap: Record<string, { emoji: string; name: string; color: string; count: number }[]> = {};
+    if (featureIds.length === 0) return awardsMap;
+
+    const { data: awards } = await supabase
+      .from('feature_awards')
+      .select('feature_id, badges:badge_id (emoji, name, color)')
+      .in('feature_id', featureIds);
+
+    if (awards) {
+      const grouped: Record<string, Record<string, { emoji: string; name: string; color: string; count: number }>> = {};
+      for (const a of awards as any[]) {
+        const fid = a.feature_id;
+        const key = a.badges?.emoji || '?';
+        if (!grouped[fid]) grouped[fid] = {};
+        if (!grouped[fid][key]) {
+          grouped[fid][key] = { emoji: a.badges?.emoji, name: a.badges?.name, color: a.badges?.color, count: 0 };
+        }
+        grouped[fid][key].count++;
+      }
+      for (const [fid, badgeMap] of Object.entries(grouped)) {
+        awardsMap[fid] = Object.values(badgeMap);
+      }
+    }
+    return awardsMap;
+  }, []);
 
   const fetchFeatures = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -33,41 +65,52 @@ export function useFeatures(sortBy: SortBy = 'score', filterStatus: FilterStatus
         break;
     }
 
-    const { data, error } = await query.limit(50);
+    const { data, error } = await query.range(0, PAGE_SIZE - 1);
 
     if (!error && data) {
-      // Fetch awards for all features
-      const featureIds = data.map((f: any) => f.id);
-      let awardsMap: Record<string, { emoji: string; name: string; color: string; count: number }[]> = {};
-
-      if (featureIds.length > 0) {
-        const { data: awards } = await supabase
-          .from('feature_awards')
-          .select('feature_id, badges:badge_id (emoji, name, color)')
-          .in('feature_id', featureIds);
-
-        if (awards) {
-          const grouped: Record<string, Record<string, { emoji: string; name: string; color: string; count: number }>> = {};
-          for (const a of awards as any[]) {
-            const fid = a.feature_id;
-            const key = a.badges?.emoji || '?';
-            if (!grouped[fid]) grouped[fid] = {};
-            if (!grouped[fid][key]) {
-              grouped[fid][key] = { emoji: a.badges?.emoji, name: a.badges?.name, color: a.badges?.color, count: 0 };
-            }
-            grouped[fid][key].count++;
-          }
-          for (const [fid, badgeMap] of Object.entries(grouped)) {
-            awardsMap[fid] = Object.values(badgeMap);
-          }
-        }
-      }
-
+      const awardsMap = await fetchAwards(data.map((f: any) => f.id));
       setFeatures(data.map((f: any) => ({ ...f, awards: awardsMap[f.id] || [] })));
+      setHasMore(data.length === PAGE_SIZE);
+      setPage(1);
     }
     setLoading(false);
     setRefreshing(false);
-  }, [sortBy, filterStatus]);
+  }, [sortBy, filterStatus, fetchAwards]);
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+
+    let query = supabase.from('features_with_details').select('*');
+
+    if (filterStatus !== 'all') {
+      query = query.eq('status', filterStatus);
+    }
+
+    switch (sortBy) {
+      case 'score':
+        query = query.order('score', { ascending: false });
+        break;
+      case 'newest':
+        query = query.order('created_at', { ascending: false });
+        break;
+      case 'comments':
+        query = query.order('comment_count', { ascending: false });
+        break;
+    }
+
+    const from = page * PAGE_SIZE;
+    const { data, error } = await query.range(from, from + PAGE_SIZE - 1);
+
+    if (!error && data) {
+      const awardsMap = await fetchAwards(data.map((f: any) => f.id));
+      const newFeatures = data.map((f: any) => ({ ...f, awards: awardsMap[f.id] || [] }));
+      setFeatures(prev => [...prev, ...newFeatures]);
+      setHasMore(data.length === PAGE_SIZE);
+      setPage(prev => prev + 1);
+    }
+    setLoadingMore(false);
+  }, [page, loadingMore, hasMore, sortBy, filterStatus, fetchAwards]);
 
   useEffect(() => {
     fetchFeatures();
@@ -92,7 +135,10 @@ export function useFeatures(sortBy: SortBy = 'score', filterStatus: FilterStatus
     features,
     loading,
     refreshing,
+    loadingMore,
+    hasMore,
     refresh: () => fetchFeatures(true),
+    loadMore,
     markUserVotes,
   };
 }

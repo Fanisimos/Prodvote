@@ -18,6 +18,7 @@ import { useTheme } from '../../lib/ThemeContext';
 import Colors from '../../constants/Colors';
 import { Stack } from 'expo-router';
 import AnimatedAvatar from '../../components/AnimatedAvatar';
+import { useReportBlock } from '../../hooks/useReportBlock';
 
 const ADMIN_USERNAMES = ['Fanisimos', 'Fanisimos_ADMIN'];
 
@@ -34,11 +35,12 @@ export default function ChatRoomScreen() {
   const { colors } = useTheme();
   const styles = getStyles(colors);
   const { session, profile } = useAuthContext();
-  const { messages, loading, sendMessage, deleteMessage } = useMessages(id);
+  const { messages, loading, loadingEarlier, hasEarlier, sendMessage, deleteMessage, loadEarlierMessages } = useMessages(id);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const isAdmin = profile?.username && ADMIN_USERNAMES.includes(profile.username);
+  const { reportUser, blockUser, isBlocked } = useReportBlock();
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -68,6 +70,82 @@ export default function ChatRoomScreen() {
     }
   }
 
+  function handleMessageLongPress(item: any) {
+    const isMe = item.user_id === session?.user.id;
+    const canDelete = isMe || isAdmin;
+
+    if (isMe) {
+      // Own message: only delete
+      if (canDelete) handleDelete(item.id);
+      return;
+    }
+
+    // Other user's message: show report/block/delete options
+    const buttons: any[] = [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: '🚩 Report User',
+        onPress: () => {
+          if (Platform.OS === 'web') {
+            const reason = prompt('Why are you reporting this user?');
+            if (reason) {
+              reportUser(item.user_id, reason, item.id).catch(() => {});
+              alert('Report submitted. Thank you.');
+            }
+          } else {
+            Alert.alert('Report User', 'Report this user for inappropriate behavior?', [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Report',
+                style: 'destructive',
+                onPress: () => {
+                  reportUser(item.user_id, 'Inappropriate message', item.id).catch(() => {});
+                  Alert.alert('Done', 'Report submitted. Thank you.');
+                },
+              },
+            ]);
+          }
+        },
+      },
+      {
+        text: isBlocked(item.user_id) ? '✅ Unblock User' : '🚫 Block User',
+        style: 'destructive' as const,
+        onPress: async () => {
+          try {
+            if (isBlocked(item.user_id)) {
+              // unblock handled via hook if needed
+            } else {
+              await blockUser(item.user_id);
+            }
+          } catch {}
+        },
+      },
+    ];
+
+    if (canDelete) {
+      buttons.push({
+        text: '🗑️ Delete Message',
+        style: 'destructive' as const,
+        onPress: () => deleteMessage(item.id),
+      });
+    }
+
+    if (Platform.OS === 'web') {
+      // Simple web fallback
+      const action = prompt(
+        `${item.username || 'User'}\n\nChoose action:\n1. Report\n2. ${isBlocked(item.user_id) ? 'Unblock' : 'Block'}${canDelete ? '\n3. Delete message' : ''}`
+      );
+      if (action === '1') buttons[1].onPress();
+      else if (action === '2') buttons[2].onPress();
+      else if (action === '3' && canDelete) buttons[3]?.onPress();
+    } else {
+      Alert.alert(item.username || 'User', 'Choose an action', buttons);
+    }
+  }
+
+  // Filter out blocked users' messages
+  const visibleMessages = messages.filter(m => !isBlocked(m.user_id));
+
   function formatTime(dateStr: string) {
     const d = new Date(dateStr);
     const now = new Date();
@@ -94,10 +172,21 @@ export default function ChatRoomScreen() {
       ) : (
         <FlatList
           ref={flatListRef}
-          data={messages}
+          data={visibleMessages}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.messageList}
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+          ListHeaderComponent={
+            hasEarlier ? (
+              <TouchableOpacity style={styles.loadEarlierBtn} onPress={loadEarlierMessages} disabled={loadingEarlier}>
+                {loadingEarlier ? (
+                  <ActivityIndicator size="small" color={Colors.primary} />
+                ) : (
+                  <Text style={styles.loadEarlierText}>Load earlier messages</Text>
+                )}
+              </TouchableOpacity>
+            ) : null
+          }
           ListEmptyComponent={
             <View style={styles.emptyWrap}>
               <Text style={styles.emptyEmoji}>{emoji || '💬'}</Text>
@@ -110,13 +199,13 @@ export default function ChatRoomScreen() {
             const tierColor = TIER_COLORS[item.tier || 'free'] || '#94a3b8';
 
             // Group messages: show avatar/name only if different user from previous
-            const prevMsg = index > 0 ? messages[index - 1] : null;
+            const prevMsg = index > 0 ? visibleMessages[index - 1] : null;
             const showHeader = !prevMsg || prevMsg.user_id !== item.user_id;
 
             return (
               <TouchableOpacity
-                activeOpacity={canDelete ? 0.7 : 1}
-                onLongPress={() => canDelete && handleDelete(item.id)}
+                activeOpacity={0.7}
+                onLongPress={() => handleMessageLongPress(item)}
                 style={[styles.messageBubble, isMe && styles.messageBubbleMe]}
               >
                 {showHeader && (
@@ -194,6 +283,10 @@ function getStyles(colors: any) {
     container: { flex: 1, backgroundColor: colors.background },
     center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     messageList: { padding: 16, paddingBottom: 8 },
+
+    // Load earlier
+    loadEarlierBtn: { alignItems: 'center', paddingVertical: 12, marginBottom: 8 },
+    loadEarlierText: { fontSize: 13, fontWeight: '600', color: Colors.primary },
 
     // Empty state
     emptyWrap: { alignItems: 'center', marginTop: 60 },

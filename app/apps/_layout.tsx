@@ -25,6 +25,7 @@ export default function AppsLayout() {
       <Stack.Screen name="breathe" options={{ title: 'Breathe' }} />
       <Stack.Screen name="hiit" options={{ title: 'HIIT Timer' }} />
       <Stack.Screen name="plans" options={{ title: 'Choose Plan' }} />
+      <Stack.Screen name="edit-profile" options={{ title: 'Edit Profile' }} />
     </Stack>
   );
 }

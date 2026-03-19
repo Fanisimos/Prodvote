@@ -156,7 +156,7 @@ export default function FeedScreen() {
   const styles = getStyles(colors);
   const isAdmin = !!profile?.username && ADMIN_USERNAMES.includes(profile.username);
   const [sortBy, setSortBy] = useState<'score' | 'newest' | 'comments'>('score');
-  const { features, loading, refreshing, refresh, markUserVotes } = useFeatures(sortBy);
+  const { features, loading, refreshing, loadingMore, hasMore, refresh, loadMore, markUserVotes } = useFeatures(sortBy);
   const { toggleVote } = useVote();
   const { badges } = useBadges(session?.user.id);
   const [showAwardPicker, setShowAwardPicker] = useState<string | null>(null);
@@ -249,7 +249,14 @@ export default function FeedScreen() {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={Colors.primary} />
         }
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.3}
         contentContainerStyle={styles.list}
+        ListFooterComponent={
+          loadingMore ? (
+            <ActivityIndicator size="small" color={Colors.primary} style={{ paddingVertical: 20 }} />
+          ) : null
+        }
         ListEmptyComponent={
           <View style={styles.empty}>
             <Text style={styles.emptyIcon}>📭</Text>

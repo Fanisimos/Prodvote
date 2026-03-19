@@ -1,6 +1,8 @@
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Alert, Platform } from 'react-native';
 import { useLocalSearchParams, Stack } from 'expo-router';
 import { usePublicProfile } from '../../hooks/usePublicProfile';
+import { useAuthContext } from '../../lib/AuthContext';
+import { useReportBlock } from '../../hooks/useReportBlock';
 import { useTheme } from '../../lib/ThemeContext';
 import Colors from '../../constants/Colors';
 import AnimatedAvatar from '../../components/AnimatedAvatar';
@@ -16,7 +18,10 @@ export default function PublicProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors } = useTheme();
   const styles = getStyles(colors);
+  const { session } = useAuthContext();
   const { profile, badges, stats, loading } = usePublicProfile(id);
+  const { reportUser, blockUser, unblockUser, isBlocked } = useReportBlock();
+  const isOwnProfile = session?.user.id === id;
 
   if (loading || !profile) {
     return (
@@ -57,6 +62,56 @@ export default function PublicProfileScreen() {
           )}
         </View>
         <Text style={styles.joinDate}>Joined {joinDate}</Text>
+        {!isOwnProfile && session && (
+          <View style={styles.actionRow}>
+            <TouchableOpacity
+              style={styles.reportBtn}
+              onPress={() => {
+                if (Platform.OS === 'web') {
+                  const reason = prompt('Why are you reporting this user?');
+                  if (reason) {
+                    reportUser(id, reason).catch(() => {});
+                    alert('Report submitted. Thank you.');
+                  }
+                } else {
+                  Alert.alert('Report User', 'Are you sure you want to report this user?', [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Report',
+                      style: 'destructive',
+                      onPress: () => {
+                        reportUser(id, 'Reported from profile').catch(() => {});
+                        Alert.alert('Done', 'Report submitted.');
+                      },
+                    },
+                  ]);
+                }
+              }}
+            >
+              <Text style={styles.reportBtnText}>🚩 Report</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.blockBtn, isBlocked(id) && styles.blockBtnActive]}
+              onPress={async () => {
+                try {
+                  if (isBlocked(id)) {
+                    await unblockUser(id);
+                    if (Platform.OS === 'web') alert('User unblocked.');
+                    else Alert.alert('Unblocked', 'You can see their messages again.');
+                  } else {
+                    await blockUser(id);
+                    if (Platform.OS === 'web') alert('User blocked.');
+                    else Alert.alert('Blocked', 'You will no longer see their messages.');
+                  }
+                } catch {}
+              }}
+            >
+              <Text style={styles.blockBtnText}>
+                {isBlocked(id) ? '✅ Blocked' : '🚫 Block'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       {/* Stats */}
@@ -146,6 +201,19 @@ function getStyles(colors: any) {
     },
     badgeEmoji: { fontSize: 28, marginBottom: 6 },
     badgeName: { fontSize: 11, fontWeight: '700', color: colors.text, textAlign: 'center' },
+
+    actionRow: { flexDirection: 'row', gap: 10, marginTop: 14 },
+    reportBtn: {
+      paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12,
+      backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.surfaceBorder,
+    },
+    reportBtnText: { fontSize: 13, fontWeight: '600', color: colors.text },
+    blockBtn: {
+      paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12,
+      backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.surfaceBorder,
+    },
+    blockBtnActive: { backgroundColor: '#ef444420', borderColor: '#ef4444' },
+    blockBtnText: { fontSize: 13, fontWeight: '600', color: colors.text },
 
     emptySection: { alignItems: 'center', marginTop: 20 },
     emptyEmoji: { fontSize: 40, marginBottom: 8 },

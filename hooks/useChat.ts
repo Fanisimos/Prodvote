@@ -49,9 +49,24 @@ export function useChannels() {
   return { channels, loading, refresh: fetchChannels };
 }
 
+const MESSAGES_PAGE_SIZE = 50;
+
 export function useMessages(channelId: string) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingEarlier, setLoadingEarlier] = useState(false);
+  const [hasEarlier, setHasEarlier] = useState(true);
+
+  const mapMessage = (m: any): Message => ({
+    ...m,
+    username: m.profiles?.username,
+    avatar_url: m.profiles?.avatar_url,
+    tier: m.profiles?.tier,
+    active_badge_emoji: m.profiles?.badges?.emoji || null,
+    active_badge_color: m.profiles?.badges?.color || null,
+    active_frame_type: m.profiles?.active_frame?.animation_type || null,
+    active_frame_color: m.profiles?.active_frame?.color || null,
+  });
 
   const fetchMessages = useCallback(async () => {
     if (!channelId) return;
@@ -63,24 +78,39 @@ export function useMessages(channelId: string) {
       `)
       .eq('channel_id', channelId)
       .order('created_at', { ascending: false })
-      .limit(100);
+      .limit(MESSAGES_PAGE_SIZE);
 
     if (data) {
-      setMessages(
-        data.map((m: any) => ({
-          ...m,
-          username: m.profiles?.username,
-          avatar_url: m.profiles?.avatar_url,
-          tier: m.profiles?.tier,
-          active_badge_emoji: m.profiles?.badges?.emoji || null,
-          active_badge_color: m.profiles?.badges?.color || null,
-          active_frame_type: m.profiles?.active_frame?.animation_type || null,
-          active_frame_color: m.profiles?.active_frame?.color || null,
-        })).reverse()
-      );
+      setMessages(data.map(mapMessage).reverse());
+      setHasEarlier(data.length === MESSAGES_PAGE_SIZE);
     }
     setLoading(false);
   }, [channelId]);
+
+  const loadEarlierMessages = useCallback(async () => {
+    if (loadingEarlier || !hasEarlier || messages.length === 0) return;
+    setLoadingEarlier(true);
+
+    const oldestMessage = messages[0];
+    const { data } = await supabase
+      .from('messages')
+      .select(`
+        *,
+        profiles:user_id (username, avatar_url, tier, active_badge_id, badges:active_badge_id (emoji, color), active_frame_id, active_frame:active_frame_id (animation_type, color))
+      `)
+      .eq('channel_id', channelId)
+      .lt('created_at', oldestMessage.created_at)
+      .order('created_at', { ascending: false })
+      .limit(MESSAGES_PAGE_SIZE);
+
+    if (data && data.length > 0) {
+      setMessages(prev => [...data.map(mapMessage).reverse(), ...prev]);
+      setHasEarlier(data.length === MESSAGES_PAGE_SIZE);
+    } else {
+      setHasEarlier(false);
+    }
+    setLoadingEarlier(false);
+  }, [channelId, loadingEarlier, hasEarlier, messages]);
 
   useEffect(() => {
     fetchMessages();
@@ -134,7 +164,7 @@ export function useMessages(channelId: string) {
     fetchMessages();
   }
 
-  return { messages, loading, sendMessage, deleteMessage, pinMessage, refresh: fetchMessages };
+  return { messages, loading, loadingEarlier, hasEarlier, sendMessage, deleteMessage, pinMessage, loadEarlierMessages, refresh: fetchMessages };
 }
 
 // Admin channel management
