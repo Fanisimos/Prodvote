@@ -10,6 +10,7 @@ import {
   Alert,
   Platform,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useAdminChannels, Channel } from '../../hooks/useChat';
 import { useTheme } from '../../lib/ThemeContext';
 import Colors from '../../constants/Colors';
@@ -20,6 +21,7 @@ const COLOR_OPTIONS = ['#7c5cfc', '#fbbf24', '#ef4444', '#22c55e', '#3b82f6', '#
 export default function ChannelsScreen() {
   const { colors } = useTheme();
   const styles = getStyles(colors);
+  const router = useRouter();
   const { channels, loading, createChannel, updateChannel, deleteChannel } = useAdminChannels();
   const [showCreate, setShowCreate] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -168,6 +170,12 @@ export default function ChannelsScreen() {
             </View>
 
             <View style={styles.channelActions}>
+              <TouchableOpacity
+                style={[styles.actionBtn, { backgroundColor: Colors.primary + '18' }]}
+                onPress={() => router.push(`/chat/${ch.id}?name=${encodeURIComponent(ch.name)}&emoji=${encodeURIComponent(ch.emoji)}`)}
+              >
+                <Text style={[styles.actionBtnText, { color: Colors.primary }]}>💬 Open</Text>
+              </TouchableOpacity>
               <TouchableOpacity style={styles.actionBtn} onPress={() => startEdit(ch)}>
                 <Text style={styles.actionBtnText}>✏️ Edit</Text>
               </TouchableOpacity>

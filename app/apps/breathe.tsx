@@ -8,6 +8,7 @@ import {
   Easing,
   Platform,
   Vibration,
+  ScrollView,
 } from 'react-native';
 import Colors from '../../constants/Colors';
 import { useTheme } from '../../lib/ThemeContext';
@@ -230,7 +231,7 @@ export default function BreatheScreen() {
     <View style={styles.container}>
       {!isActive ? (
         // Setup screen
-        <View style={styles.setup}>
+        <ScrollView style={styles.setup} contentContainerStyle={styles.setupContent} showsVerticalScrollIndicator={false}>
           <Text style={styles.setupTitle}>Choose your breath</Text>
 
           {/* Pattern selector */}
@@ -275,7 +276,7 @@ export default function BreatheScreen() {
           >
             <Text style={styles.startBtnText}>Begin Session</Text>
           </TouchableOpacity>
-        </View>
+        </ScrollView>
       ) : (
         // Active breathing screen
         <View style={styles.activeContainer}>
@@ -342,6 +343,7 @@ function getStyles(colors: any) {
 
     // Setup
     setup: { flex: 1, padding: 20, paddingTop: 10 },
+    setupContent: { paddingBottom: 40 },
     setupTitle: { fontSize: 22, fontWeight: '800', color: colors.text, marginBottom: 20 },
     patternGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 28 },
     patternCard: {
