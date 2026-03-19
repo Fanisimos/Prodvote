@@ -111,7 +111,11 @@ function FeatureCard({
 
         <View style={styles.cardFooter}>
           <TouchableOpacity onPress={onAuthorPress}>
-            <Text style={[styles.meta, { fontWeight: '700' }]}>@{item.author_username}</Text>
+            <Text style={[
+              styles.meta,
+              { fontWeight: '700' },
+              item.author_tier === 'legendary' && styles.legendaryName,
+            ]}>@{item.author_username}</Text>
           </TouchableOpacity>
           {item.author_tier && TIER_BADGES[item.author_tier] && (
             <View style={[
@@ -127,6 +131,7 @@ function FeatureCard({
               </Text>
             </View>
           )}
+          {(item as any).is_priority && <Text style={styles.priorityBadge}>⚡ Priority</Text>}
           {item.is_boosted && <Text style={styles.boostBadge}>🚀 Boosted</Text>}
           {item.dev_hearted && <Text style={styles.heartBadge}>❤️ Loved by dev</Text>}
           <Text style={styles.meta}>💬 {item.comment_count}</Text>
@@ -191,7 +196,13 @@ export default function FeedScreen() {
 
   async function handleVote(feature: Feature) {
     if (!session?.user.id) return;
-    await toggleVote(feature.id, session.user.id, !!feature.user_has_voted);
+    const result = await toggleVote(feature.id, session.user.id, !!feature.user_has_voted);
+    if (!result.success && result.error) {
+      if (Platform.OS === 'web') alert(result.error);
+      else Alert.alert('Vote Limit', result.error);
+      return;
+    }
+    if (session.user.id) fetchProfile(session.user.id);
     await refresh();
     markUserVotes(session.user.id);
   }
@@ -410,6 +421,15 @@ function getStyles(colors: any) {
     meta: {
       fontSize: 12,
       color: colors.textSecondary,
+    },
+    legendaryName: {
+      color: '#fbbf24',
+      fontWeight: '900',
+    },
+    priorityBadge: {
+      fontSize: 11,
+      color: '#7c5cfc',
+      fontWeight: '700',
     },
     boostBadge: {
       fontSize: 12,

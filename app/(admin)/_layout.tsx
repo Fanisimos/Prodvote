@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { key: 'dashboard', label: 'Dashboard', emoji: '📊', path: '/(admin)/dashboard' },
   { key: 'features', label: 'Features', emoji: '💡', path: '/(admin)/features' },
   { key: 'users', label: 'Users', emoji: '👥', path: '/(admin)/users' },
+  { key: 'subscriptions', label: 'Subscriptions', emoji: '💎', path: '/(admin)/subscriptions' },
   { key: 'badges', label: 'Badges', emoji: '🏅', path: '/(admin)/badges' },
   { key: 'channels', label: 'Channels', emoji: '💬', path: '/(admin)/channels' },
 ];

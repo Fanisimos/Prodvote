@@ -14,10 +14,12 @@ import { useAuthContext } from '../../lib/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { Feature } from '../../lib/types';
 import { useBadges } from '../../hooks/useFeatures';
+import { useAvatarFrames } from '../../hooks/useAvatarFrames';
 import Colors from '../../constants/Colors';
 import { useTheme } from '../../lib/ThemeContext';
 import { useDailyReward } from '../../hooks/useDailyReward';
 import DailyRewardModal from '../../components/DailyRewardModal';
+import AnimatedAvatar from '../../components/AnimatedAvatar';
 
 const TIER_INFO: Record<string, { label: string; color: string; emoji: string; perks: string }> = {
   free: { label: 'Free', color: '#94a3b8', emoji: '🆓', perks: '3 votes/mo · 0 coins/mo' },
@@ -38,9 +40,13 @@ export default function ProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [showRewardModal, setShowRewardModal] = useState(false);
   const [showBadgePicker, setShowBadgePicker] = useState(false);
+  const [showFramePicker, setShowFramePicker] = useState(false);
   const { canClaim, claiming, result, streak, claimReward, setResult } = useDailyReward(session?.user.id);
   const { badges, ownedIds } = useBadges(session?.user.id);
   const ownedBadges = badges.filter(b => ownedIds.has(b.id));
+  const { frames, ownedIds: ownedFrameIds, setActiveFrame } = useAvatarFrames(session?.user.id);
+  const ownedFrames = frames.filter(f => ownedFrameIds.has(f.id));
+  const activeFrame = frames.find(f => f.id === profile?.active_frame_id);
 
   useEffect(() => {
     if (!session?.user.id) return;
@@ -75,11 +81,15 @@ export default function ProfileScreen() {
           <>
             {/* Avatar & name */}
             <View style={styles.header}>
-              <View style={[styles.avatar, { borderColor: tier.color }]}>
-                <Text style={styles.avatarText}>
-                  {profile.username.charAt(0).toUpperCase()}
-                </Text>
-              </View>
+              <TouchableOpacity onPress={() => setShowFramePicker(true)} activeOpacity={0.8}>
+                <AnimatedAvatar
+                  letter={profile.username.charAt(0).toUpperCase()}
+                  size={76}
+                  tierColor={tier.color}
+                  frameType={activeFrame?.animation_type}
+                  frameColor={activeFrame?.color}
+                />
+              </TouchableOpacity>
               <Text style={styles.username}>@{profile.username}</Text>
               <View style={[styles.tierBadge, { backgroundColor: tier.color }]}>
                 <Text style={styles.tierText}>{tier.emoji} {tier.label}</Text>
@@ -234,6 +244,52 @@ export default function ProfileScreen() {
               </View>
             )}
 
+            {/* Avatar frames section */}
+            <View style={styles.badgeSection}>
+              <View style={styles.badgeSectionHeader}>
+                <Text style={styles.sectionTitle}>AVATAR FRAMES</Text>
+                {ownedFrames.length > 0 && (
+                  <TouchableOpacity onPress={() => setShowFramePicker(true)}>
+                    <Text style={styles.setBadgeLink}>Set Active Frame</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+              {activeFrame && (
+                <View style={[styles.activeBadgeCard, { borderColor: activeFrame.color + '60' }]}>
+                  <AnimatedAvatar
+                    letter={profile.username.charAt(0).toUpperCase()}
+                    size={32}
+                    frameType={activeFrame.animation_type}
+                    frameColor={activeFrame.color}
+                  />
+                  <Text style={[styles.activeBadgeLabel, { color: activeFrame.color }]}>{activeFrame.name}</Text>
+                  <Text style={styles.activeBadgeTag}>ACTIVE</Text>
+                </View>
+              )}
+              {ownedFrames.length > 0 ? (
+                <View style={styles.badgeGrid}>
+                  {ownedFrames.map(f => (
+                    <View key={f.id} style={[styles.frameGridCard, { borderColor: f.color + '40' }]}>
+                      <AnimatedAvatar
+                        letter={profile.username.charAt(0).toUpperCase()}
+                        size={28}
+                        frameType={f.animation_type}
+                        frameColor={f.color}
+                      />
+                      <Text style={styles.badgeCardName} numberOfLines={1}>{f.name}</Text>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.emptyFrameCard}
+                  onPress={() => router.push('/(tabs)/shop')}
+                >
+                  <Text style={styles.emptyFrameText}>✨ Get animated avatar frames from the shop!</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
             <Text style={styles.sectionTitle}>Your Submissions</Text>
           </>
         }
@@ -281,6 +337,53 @@ export default function ProfileScreen() {
         }}
         onClose={() => setShowRewardModal(false)}
       />
+
+      {/* Active frame picker modal */}
+      <Modal visible={showFramePicker} transparent animationType="slide">
+        <Pressable style={styles.modalOverlay} onPress={() => setShowFramePicker(false)}>
+          <Pressable style={styles.modalContent} onPress={() => {}}>
+            <Text style={styles.modalTitle}>Set Active Frame</Text>
+            <Text style={styles.modalSub}>This animation will appear around your avatar</Text>
+
+            <TouchableOpacity
+              style={[styles.badgeOption, !profile.active_frame_id && styles.badgeOptionActive]}
+              onPress={async () => {
+                await setActiveFrame(null);
+                if (session?.user.id) fetchProfile(session.user.id);
+                setShowFramePicker(false);
+              }}
+            >
+              <Text style={styles.badgeOptionEmoji}>✕</Text>
+              <Text style={styles.badgeOptionName}>No Frame</Text>
+            </TouchableOpacity>
+
+            {ownedFrames.map(f => (
+              <TouchableOpacity
+                key={f.id}
+                style={[styles.badgeOption, profile.active_frame_id === f.id && styles.badgeOptionActive]}
+                onPress={async () => {
+                  await setActiveFrame(f.id);
+                  if (session?.user.id) fetchProfile(session.user.id);
+                  setShowFramePicker(false);
+                }}
+              >
+                <View style={styles.frameOptionPreview}>
+                  <AnimatedAvatar
+                    letter={profile.username.charAt(0).toUpperCase()}
+                    size={32}
+                    frameType={f.animation_type}
+                    frameColor={f.color}
+                  />
+                </View>
+                <View>
+                  <Text style={styles.badgeOptionName}>{f.name}</Text>
+                  <Text style={{ fontSize: 12, color: colors.textSecondary }}>{f.description}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* Active badge picker modal */}
       <Modal visible={showBadgePicker} transparent animationType="slide">
@@ -420,6 +523,16 @@ function getStyles(colors: any) {
     },
     badgeCardEmoji: { fontSize: 24, marginBottom: 4 },
     badgeCardName: { fontSize: 10, fontWeight: '700', color: colors.text, textAlign: 'center' },
+    frameGridCard: {
+      backgroundColor: colors.surface, borderRadius: 14, padding: 12,
+      alignItems: 'center', width: 80, borderWidth: 1.5, gap: 6,
+    },
+    frameOptionPreview: { width: 48, height: 48, justifyContent: 'center', alignItems: 'center' },
+    emptyFrameCard: {
+      backgroundColor: colors.surface, borderRadius: 12, padding: 16, alignItems: 'center',
+      borderWidth: 1, borderColor: colors.surfaceBorder, borderStyle: 'dashed',
+    },
+    emptyFrameText: { fontSize: 13, color: colors.textSecondary },
 
     // Modal
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },

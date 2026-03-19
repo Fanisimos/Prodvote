@@ -15,6 +15,22 @@ export interface Profile {
   last_login_date: string | null;
   login_streak: number;
   active_badge_id: number | null;
+  active_frame_id: number | null;
+  subscription_started_at: string | null;
+  last_monthly_grant_at: string | null;
+  last_vote_reset_at: string | null;
+}
+
+export interface AvatarFrame {
+  id: number;
+  name: string;
+  description: string;
+  animation_type: string;
+  price: number;
+  color: string;
+  is_active: boolean;
+  sort_order: number;
+  owned?: boolean;
 }
 
 export interface Category {

@@ -3,6 +3,7 @@ import { useLocalSearchParams, Stack } from 'expo-router';
 import { usePublicProfile } from '../../hooks/usePublicProfile';
 import { useTheme } from '../../lib/ThemeContext';
 import Colors from '../../constants/Colors';
+import AnimatedAvatar from '../../components/AnimatedAvatar';
 
 const TIER_INFO: Record<string, { label: string; color: string; emoji: string }> = {
   free: { label: 'Free', color: '#94a3b8', emoji: '' },
@@ -35,11 +36,13 @@ export default function PublicProfileScreen() {
 
       {/* Avatar & name */}
       <View style={styles.header}>
-        <View style={[styles.avatar, { borderColor: tier.color }]}>
-          <Text style={styles.avatarText}>
-            {profile.username.charAt(0).toUpperCase()}
-          </Text>
-        </View>
+        <AnimatedAvatar
+          letter={profile.username.charAt(0).toUpperCase()}
+          size={80}
+          tierColor={tier.color}
+          frameType={profile.active_frame_type}
+          frameColor={profile.active_frame_color}
+        />
         <Text style={styles.username}>@{profile.username}</Text>
         <View style={styles.badgeRow}>
           <View style={[styles.tierBadge, { backgroundColor: tier.color }]}>

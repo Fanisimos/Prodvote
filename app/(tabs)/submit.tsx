@@ -48,11 +48,13 @@ export default function SubmitScreen() {
     setError('');
     setLoading(true);
 
+    const isPriority = profile?.tier && profile.tier !== 'free';
     const { error: err } = await supabase.from('features').insert({
       user_id: session.user.id,
       title: title.trim(),
       description: description.trim(),
       category_id: categoryId,
+      is_priority: !!isPriority,
     });
 
     setLoading(false);
@@ -128,8 +130,11 @@ export default function SubmitScreen() {
       {profile && (
         <View style={styles.infoBox}>
           <Text style={styles.infoText}>
-            Tier: <Text style={styles.infoBold}>{profile.tier}</Text> · Votes remaining:{' '}
-            <Text style={styles.infoBold}>{profile.votes_remaining}</Text>
+            Tier: <Text style={styles.infoBold}>{profile.tier}</Text> · Votes:{' '}
+            <Text style={styles.infoBold}>
+              {profile.tier === 'ultra' || profile.tier === 'legendary' ? '∞' : `${profile.votes_remaining} left`}
+            </Text>
+            {profile.tier !== 'free' && ' · ⚡ Priority submission'}
           </Text>
         </View>
       )}

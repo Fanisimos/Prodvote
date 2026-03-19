@@ -3,7 +3,7 @@ import Purchases, { LOG_LEVEL, PurchasesPackage, CustomerInfo } from 'react-nati
 import { supabase } from './supabase';
 
 // RevenueCat API keys (same key for now — add platform-specific keys when you set up Apple/Google)
-const API_KEY = 'test_YjCoQxhYEpzwbjPASQGsKFJouqa';
+const API_KEY = 'appl_lxPVqeQCAiilJdIIYJZSQmgyYrZ';
 
 // Entitlement IDs — these must match what you set up in RevenueCat dashboard
 export const ENTITLEMENTS = {
@@ -98,7 +98,7 @@ export async function syncTierFromPurchase(customerInfo: CustomerInfo) {
     tier = 'pro';
   }
 
-  // Update Supabase profile
+  // Update Supabase profile — tier change trigger handles coins/votes/subscription dates
   const { data: { user } } = await supabase.auth.getUser();
   if (user) {
     await supabase.from('profiles').update({ tier }).eq('id', user.id);

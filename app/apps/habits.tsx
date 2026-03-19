@@ -8,6 +8,8 @@ import {
   ScrollView,
   Modal,
   Pressable,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Colors from '../../constants/Colors';
@@ -200,48 +202,50 @@ export default function HabitsScreen() {
 
       {/* Add Modal */}
       <Modal visible={showAdd} transparent animationType="slide">
-        <Pressable style={styles.modalOverlay} onPress={() => setShowAdd(false)}>
-          <Pressable style={styles.modalContent} onPress={() => {}}>
-            <Text style={styles.modalTitle}>New Habit</Text>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <Pressable style={styles.modalOverlay} onPress={() => setShowAdd(false)}>
+            <Pressable style={styles.modalContent} onPress={() => {}}>
+              <Text style={styles.modalTitle}>New Habit</Text>
 
-            <TextInput
-              style={styles.input}
-              placeholder="e.g. Drink water, Read 20 pages..."
-              placeholderTextColor="#64748b"
-              value={newName}
-              onChangeText={setNewName}
-              autoFocus
-            />
+              <TextInput
+                style={styles.input}
+                placeholder="e.g. Drink water, Read 20 pages..."
+                placeholderTextColor="#64748b"
+                value={newName}
+                onChangeText={setNewName}
+                autoFocus
+              />
 
-            <Text style={styles.label}>ICON</Text>
-            <View style={styles.iconPicker}>
-              {ICONS.map(ic => (
-                <TouchableOpacity
-                  key={ic}
-                  style={[styles.iconOption, selectedIcon === ic && styles.iconSelected]}
-                  onPress={() => setSelectedIcon(ic)}
-                >
-                  <Text style={{ fontSize: 22 }}>{ic}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+              <Text style={styles.label}>ICON</Text>
+              <View style={styles.iconPicker}>
+                {ICONS.map(ic => (
+                  <TouchableOpacity
+                    key={ic}
+                    style={[styles.iconOption, selectedIcon === ic && styles.iconSelected]}
+                    onPress={() => setSelectedIcon(ic)}
+                  >
+                    <Text style={{ fontSize: 22 }}>{ic}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
 
-            <Text style={styles.label}>COLOR</Text>
-            <View style={styles.colorPicker}>
-              {HABIT_COLORS.map(c => (
-                <TouchableOpacity
-                  key={c}
-                  style={[styles.colorOption, { backgroundColor: c }, selectedColor === c && styles.colorSelected]}
-                  onPress={() => setSelectedColor(c)}
-                />
-              ))}
-            </View>
+              <Text style={styles.label}>COLOR</Text>
+              <View style={styles.colorPicker}>
+                {HABIT_COLORS.map(c => (
+                  <TouchableOpacity
+                    key={c}
+                    style={[styles.colorOption, { backgroundColor: c }, selectedColor === c && styles.colorSelected]}
+                    onPress={() => setSelectedColor(c)}
+                  />
+                ))}
+              </View>
 
-            <TouchableOpacity style={styles.addBtn} onPress={addHabit}>
-              <Text style={styles.addBtnText}>Add Habit</Text>
-            </TouchableOpacity>
+              <TouchableOpacity style={styles.addBtn} onPress={addHabit}>
+                <Text style={styles.addBtnText}>Add Habit</Text>
+              </TouchableOpacity>
+            </Pressable>
           </Pressable>
-        </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );

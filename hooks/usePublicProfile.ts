@@ -12,6 +12,10 @@ export interface PublicProfile {
   active_badge_emoji: string | null;
   active_badge_name: string | null;
   active_badge_color: string | null;
+  active_frame_id: number | null;
+  active_frame_type: string | null;
+  active_frame_color: string | null;
+  active_frame_name: string | null;
 }
 
 export interface OwnedBadge {

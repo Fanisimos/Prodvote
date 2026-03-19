@@ -20,9 +20,17 @@ import { useTheme } from '../../lib/ThemeContext';
 import { useFeatureDetail, useComments, useVote, useBadges, giveFeatureAward } from '../../hooks/useFeatures';
 import { FeatureStatus } from '../../lib/types';
 import Colors from '../../constants/Colors';
+import AnimatedAvatar from '../../components/AnimatedAvatar';
 
 // Admin usernames
 const ADMIN_USERNAMES = ['Fanisimos', 'Fanisimos_ADMIN'];
+
+const TIER_COLORS: Record<string, string> = {
+  free: '#94a3b8',
+  pro: '#7c5cfc',
+  ultra: '#fbbf24',
+  legendary: '#ff4d6a',
+};
 
 const STATUS_COLORS: Record<FeatureStatus, string> = {
   open: '#94a3b8',
@@ -64,7 +72,13 @@ export default function FeatureDetailScreen() {
 
   async function handleVote() {
     if (!session?.user.id || !feature) return;
-    await toggleVote(feature.id, session.user.id, !!feature.user_has_voted);
+    const result = await toggleVote(feature.id, session.user.id, !!feature.user_has_voted);
+    if (!result.success && result.error) {
+      if (Platform.OS === 'web') alert(result.error);
+      else Alert.alert('Vote Limit', result.error);
+      return;
+    }
+    if (session.user.id) fetchProfile(session.user.id);
   }
 
   function handleDelete(commentId: string) {
@@ -207,7 +221,19 @@ export default function FeatureDetailScreen() {
             <View style={styles.commentHeader}>
               <View style={styles.commentUserRow}>
                 <TouchableOpacity onPress={() => router.push(`/profile/${item.user_id}`)}>
-                  <Text style={styles.commentUser}>
+                  <AnimatedAvatar
+                    letter={(item.username || '?').charAt(0).toUpperCase()}
+                    size={24}
+                    tierColor={TIER_COLORS[item.tier || 'free'] || '#94a3b8'}
+                    frameType={item.active_frame_type}
+                    frameColor={item.active_frame_color}
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => router.push(`/profile/${item.user_id}`)}>
+                  <Text style={[
+                    styles.commentUser,
+                    item.tier === 'legendary' && styles.legendaryName,
+                  ]}>
                     @{item.username}
                     {item.is_dev_reply && <Text style={styles.devTag}> DEV</Text>}
                   </Text>
@@ -472,6 +498,7 @@ function getStyles(colors: any) {
     commentHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 },
     commentUserRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
     commentUser: { fontSize: 13, fontWeight: '700', color: colors.text },
+    legendaryName: { color: '#fbbf24', fontWeight: '900' },
     devTag: { color: Colors.primary, fontSize: 11 },
     commentBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
     commentBadgeText: { fontSize: 11, fontWeight: '700', color: colors.text },

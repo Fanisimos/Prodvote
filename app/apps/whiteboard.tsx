@@ -1,16 +1,22 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   Platform,
+  PanResponder,
+  Dimensions,
 } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import Colors from '../../constants/Colors';
 import { useTheme } from '../../lib/ThemeContext';
 
-interface Point { x: number; y: number; }
-interface Stroke { points: Point[]; color: string; width: number; }
+interface Stroke {
+  path: string;
+  color: string;
+  width: number;
+}
 
 const COLORS = ['#ffffff', '#7c5cfc', '#ff4d6a', '#ffb347', '#34d399', '#4dc9f6', '#a78bfa', '#f472b6'];
 const WIDTHS = [2, 4, 8, 14];
@@ -18,181 +24,89 @@ const WIDTHS = [2, 4, 8, 14];
 export default function WhiteboardScreen() {
   const { colors } = useTheme();
   const styles = getStyles(colors);
-  const BG = colors.background;
 
   const [currentColor, setCurrentColor] = useState('#ffffff');
   const [currentWidth, setCurrentWidth] = useState(4);
   const [isEraser, setIsEraser] = useState(false);
   const [showTools, setShowTools] = useState(false);
-  const [strokeCount, setStrokeCount] = useState(0);
+  const [strokes, setStrokes] = useState<Stroke[]>([]);
+  const [currentPath, setCurrentPath] = useState('');
+  const [undoneStrokes, setUndoneStrokes] = useState<Stroke[]>([]);
 
-  // All drawing state lives in refs — no re-renders during drawing
-  const containerRef = useRef<View>(null);
-  const canvasEl = useRef<HTMLCanvasElement | null>(null);
-  const strokes = useRef<Stroke[]>([]);
-  const undone = useRef<Stroke[]>([]);
-  const current = useRef<Stroke | null>(null);
-  const drawing = useRef(false);
-  const colorRef = useRef(currentColor);
-  const widthRef = useRef(currentWidth);
-  const eraserRef = useRef(isEraser);
-
-  colorRef.current = currentColor;
-  widthRef.current = currentWidth;
-  eraserRef.current = isEraser;
-
-  function drawStroke(ctx: CanvasRenderingContext2D, s: Stroke) {
-    if (s.points.length < 2) return;
-    ctx.strokeStyle = s.color;
-    ctx.lineWidth = s.width;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.beginPath();
-    ctx.moveTo(s.points[0].x, s.points[0].y);
-    for (let i = 1; i < s.points.length; i++) {
-      const p = s.points[i - 1], c = s.points[i];
-      ctx.quadraticCurveTo(p.x, p.y, (p.x + c.x) / 2, (p.y + c.y) / 2);
-    }
-    ctx.stroke();
-  }
-
-  function fullRedraw() {
-    const canvas = canvasEl.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    ctx.fillStyle = BG;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Grid
-    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
-    ctx.lineWidth = 1;
-    for (let x = 0; x < canvas.width; x += 40) {
-      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
-    }
-    for (let y = 0; y < canvas.height; y += 40) {
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
-    }
-
-    for (const s of strokes.current) drawStroke(ctx, s);
-    if (current.current) drawStroke(ctx, current.current);
-  }
-
-  // Mount canvas via DOM — completely outside React's render
-  useEffect(() => {
-    if (Platform.OS !== 'web') return;
-
-    const wrapper = document.getElementById('whiteboard-container');
-    if (!wrapper) return;
-
-    const canvas = document.createElement('canvas');
-    canvas.style.width = '100%';
-    canvas.style.height = '100%';
-    canvas.style.display = 'block';
-    canvas.style.touchAction = 'none';
-    canvas.style.cursor = 'crosshair';
-    wrapper.appendChild(canvas);
-    canvasEl.current = canvas;
-
-    function resize() {
-      canvas.width = wrapper!.clientWidth;
-      canvas.height = wrapper!.clientHeight;
-      fullRedraw();
-    }
-
-    function getPos(e: PointerEvent): Point {
-      const rect = canvas.getBoundingClientRect();
-      return { x: e.clientX - rect.left, y: e.clientY - rect.top };
-    }
-
-    canvas.addEventListener('pointerdown', (e) => {
-      e.preventDefault();
-      drawing.current = true;
-      current.current = {
-        points: [getPos(e)],
-        color: eraserRef.current ? BG : colorRef.current,
-        width: eraserRef.current ? 24 : widthRef.current,
-      };
-      undone.current = [];
-    });
-
-    canvas.addEventListener('pointermove', (e) => {
-      if (!drawing.current || !current.current) return;
-      e.preventDefault();
-      current.current.points.push(getPos(e));
-      fullRedraw();
-    });
-
-    canvas.addEventListener('pointerup', () => {
-      if (!drawing.current) return;
-      drawing.current = false;
-      if (current.current && current.current.points.length > 1) {
-        strokes.current.push(current.current);
-        setStrokeCount(strokes.current.length);
-      }
-      current.current = null;
-      fullRedraw();
-    });
-
-    canvas.addEventListener('pointerleave', () => {
-      if (!drawing.current) return;
-      drawing.current = false;
-      if (current.current && current.current.points.length > 1) {
-        strokes.current.push(current.current);
-        setStrokeCount(strokes.current.length);
-      }
-      current.current = null;
-      fullRedraw();
-    });
-
-    resize();
-    window.addEventListener('resize', resize);
-
-    return () => {
-      window.removeEventListener('resize', resize);
-      wrapper?.removeChild(canvas);
-      canvasEl.current = null;
-    };
-  }, []);
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt) => {
+        const { locationX, locationY } = evt.nativeEvent;
+        setCurrentPath(`M${locationX},${locationY}`);
+        setUndoneStrokes([]);
+      },
+      onPanResponderMove: (evt) => {
+        const { locationX, locationY } = evt.nativeEvent;
+        setCurrentPath(prev => `${prev} L${locationX},${locationY}`);
+      },
+      onPanResponderRelease: () => {
+        if (currentPath) {
+          setStrokes(prev => [...prev, {
+            path: currentPath,
+            color: isEraser ? colors.background : currentColor,
+            width: isEraser ? 24 : currentWidth,
+          }]);
+          setCurrentPath('');
+        }
+      },
+    })
+  ).current;
 
   function undo() {
-    if (strokes.current.length === 0) return;
-    undone.current.push(strokes.current.pop()!);
-    setStrokeCount(strokes.current.length);
-    fullRedraw();
+    if (strokes.length === 0) return;
+    const last = strokes[strokes.length - 1];
+    setStrokes(prev => prev.slice(0, -1));
+    setUndoneStrokes(prev => [...prev, last]);
   }
 
   function redo() {
-    if (undone.current.length === 0) return;
-    strokes.current.push(undone.current.pop()!);
-    setStrokeCount(strokes.current.length);
-    fullRedraw();
+    if (undoneStrokes.length === 0) return;
+    const last = undoneStrokes[undoneStrokes.length - 1];
+    setUndoneStrokes(prev => prev.slice(0, -1));
+    setStrokes(prev => [...prev, last]);
   }
 
   function clear() {
-    strokes.current = [];
-    undone.current = [];
-    setStrokeCount(0);
-    fullRedraw();
-  }
-
-  if (Platform.OS !== 'web') {
-    return (
-      <View style={styles.container}>
-        <View style={styles.nativeCanvas}>
-          <Text style={styles.canvasPlaceholder}>
-            Drawing works best on web. Native canvas coming soon.
-          </Text>
-        </View>
-      </View>
-    );
+    setStrokes([]);
+    setUndoneStrokes([]);
+    setCurrentPath('');
   }
 
   return (
     <View style={styles.container}>
-      {/* Canvas is mounted here via DOM — React won't touch it */}
-      <View style={styles.canvasWrap} nativeID="whiteboard-container" />
+      {/* Canvas */}
+      <View style={styles.canvasWrap} {...panResponder.panHandlers}>
+        <Svg style={StyleSheet.absoluteFill}>
+          {strokes.map((s, i) => (
+            <Path
+              key={i}
+              d={s.path}
+              stroke={s.color}
+              strokeWidth={s.width}
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          ))}
+          {currentPath ? (
+            <Path
+              d={currentPath}
+              stroke={isEraser ? colors.background : currentColor}
+              strokeWidth={isEraser ? 24 : currentWidth}
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          ) : null}
+        </Svg>
+      </View>
 
       {/* Floating toolbar */}
       <View style={styles.toolbar}>
@@ -212,10 +126,10 @@ export default function WhiteboardScreen() {
         <View style={styles.toolDivider} />
 
         <TouchableOpacity style={styles.toolBtn} onPress={undo}>
-          <Text style={[styles.toolIcon, strokeCount === 0 && { opacity: 0.3 }]}>↩</Text>
+          <Text style={[styles.toolIcon, strokes.length === 0 && { opacity: 0.3 }]}>↩</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.toolBtn} onPress={redo}>
-          <Text style={styles.toolIcon}>↪</Text>
+          <Text style={[styles.toolIcon, undoneStrokes.length === 0 && { opacity: 0.3 }]}>↪</Text>
         </TouchableOpacity>
 
         <View style={styles.toolDivider} />
@@ -260,7 +174,7 @@ export default function WhiteboardScreen() {
       )}
 
       <View style={styles.counter}>
-        <Text style={styles.counterText}>{strokeCount} strokes</Text>
+        <Text style={styles.counterText}>{strokes.length} strokes</Text>
       </View>
     </View>
   );
@@ -270,8 +184,6 @@ function getStyles(colors: any) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
     canvasWrap: { flex: 1 },
-    nativeCanvas: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    canvasPlaceholder: { fontSize: 16, color: colors.textSecondary, opacity: 0.5 },
     toolbar: {
       position: 'absolute', bottom: 30, alignSelf: 'center', flexDirection: 'row',
       backgroundColor: colors.surface, borderRadius: 20, paddingHorizontal: 8,

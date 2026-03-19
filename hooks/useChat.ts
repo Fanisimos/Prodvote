@@ -25,6 +25,8 @@ export interface Message {
   tier?: string;
   active_badge_emoji?: string | null;
   active_badge_color?: string | null;
+  active_frame_type?: string | null;
+  active_frame_color?: string | null;
 }
 
 export function useChannels() {
@@ -57,7 +59,7 @@ export function useMessages(channelId: string) {
       .from('messages')
       .select(`
         *,
-        profiles:user_id (username, avatar_url, tier, active_badge_id, badges:active_badge_id (emoji, color))
+        profiles:user_id (username, avatar_url, tier, active_badge_id, badges:active_badge_id (emoji, color), active_frame_id, active_frame:active_frame_id (animation_type, color))
       `)
       .eq('channel_id', channelId)
       .order('created_at', { ascending: false })
@@ -72,6 +74,8 @@ export function useMessages(channelId: string) {
           tier: m.profiles?.tier,
           active_badge_emoji: m.profiles?.badges?.emoji || null,
           active_badge_color: m.profiles?.badges?.color || null,
+          active_frame_type: m.profiles?.active_frame?.animation_type || null,
+          active_frame_color: m.profiles?.active_frame?.color || null,
         })).reverse()
       );
     }
@@ -98,12 +102,26 @@ export function useMessages(channelId: string) {
     };
   }, [channelId, fetchMessages]);
 
-  async function sendMessage(body: string, userId: string) {
+  async function sendMessage(body: string, userId: string, username?: string, tier?: string) {
+    // Optimistically add the message immediately
+    const optimisticMsg: Message = {
+      id: 'optimistic-' + Date.now(),
+      channel_id: channelId,
+      user_id: userId,
+      body: body.trim(),
+      is_pinned: false,
+      created_at: new Date().toISOString(),
+      username: username || '...',
+      tier: tier || 'free',
+    };
+    setMessages(prev => [...prev, optimisticMsg]);
+
     const { error } = await supabase.from('messages').insert({
       channel_id: channelId,
       user_id: userId,
       body: body.trim(),
     });
+    // Real-time subscription will refetch and replace optimistic message
     return { error };
   }
 

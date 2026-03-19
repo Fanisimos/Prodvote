@@ -12,8 +12,10 @@ import {
 } from 'react-native';
 import { useAuthContext } from '../../lib/AuthContext';
 import { useBadges } from '../../hooks/useFeatures';
+import { useAvatarFrames } from '../../hooks/useAvatarFrames';
 import Colors from '../../constants/Colors';
 import { useTheme } from '../../lib/ThemeContext';
+import AnimatedAvatar from '../../components/AnimatedAvatar';
 
 const COIN_PACKS = [
   { id: 'pack1', coins: 1000, price: '£4.99', label: 'Starter', perCoin: '£0.005', color: '#ffb347', popular: false },
@@ -26,8 +28,10 @@ export default function ShopScreen() {
   const { colors } = useTheme();
   const styles = getStyles(colors);
   const { badges, loading, purchaseBadge } = useBadges(session?.user.id);
+  const { frames, loading: framesLoading, purchaseFrame } = useAvatarFrames(session?.user.id);
   const [buying, setBuying] = useState<number | null>(null);
-  const [tab, setTab] = useState<'badges' | 'coins'>('badges');
+  const [buyingFrame, setBuyingFrame] = useState<number | null>(null);
+  const [tab, setTab] = useState<'badges' | 'frames' | 'coins'>('badges');
 
   async function handleBuy(badgeId: number, price: number, name: string) {
     if (!session?.user.id) return;
@@ -49,6 +53,28 @@ export default function ShopScreen() {
       fetchProfile(session.user.id);
     }
     setBuying(null);
+  }
+
+  async function handleBuyFrame(frameId: number, price: number, name: string) {
+    if (!session?.user.id) return;
+    if (!profile || profile.coins < price) {
+      if (Platform.OS === 'web') {
+        alert('Not enough coins!');
+      } else {
+        Alert.alert('Not enough coins', `You need ${price} coins to buy ${name}.`);
+      }
+      return;
+    }
+
+    setBuyingFrame(frameId);
+    const { error } = await purchaseFrame(frameId, price);
+    if (error) {
+      if (Platform.OS === 'web') alert(error);
+      else Alert.alert('Error', String(error));
+    } else {
+      fetchProfile(session.user.id);
+    }
+    setBuyingFrame(null);
   }
 
   function handleBuyCoins(packId: string, coins: number, price: string) {
@@ -96,15 +122,81 @@ export default function ShopScreen() {
           <Text style={[styles.toggleText, tab === 'badges' && styles.toggleTextActive]}>Badges</Text>
         </TouchableOpacity>
         <TouchableOpacity
+          style={[styles.toggleBtn, tab === 'frames' && styles.toggleActive]}
+          onPress={() => setTab('frames')}
+        >
+          <Text style={[styles.toggleText, tab === 'frames' && styles.toggleTextActive]}>Frames</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
           style={[styles.toggleBtn, tab === 'coins' && styles.toggleActive]}
           onPress={() => setTab('coins')}
         >
-          <Text style={[styles.toggleText, tab === 'coins' && styles.toggleTextActive]}>Buy Coins</Text>
+          <Text style={[styles.toggleText, tab === 'coins' && styles.toggleTextActive]}>Coins</Text>
         </TouchableOpacity>
       </View>
 
-      {tab === 'badges' ? (
+      {tab === 'frames' ? (
         <FlatList
+          key="frames-list"
+          data={frames}
+          keyExtractor={item => item.id.toString()}
+          contentContainerStyle={styles.frameList}
+          ListHeaderComponent={
+            <View style={styles.headerSection}>
+              <Text style={styles.sectionTitle}>AVATAR FRAMES</Text>
+              <Text style={styles.sectionSub}>
+                Animated effects around your avatar. Stand out in chat and profiles.
+              </Text>
+            </View>
+          }
+          renderItem={({ item }) => {
+            const owned = item.owned;
+            const canAfford = (profile?.coins ?? 0) >= item.price;
+            return (
+              <View style={[styles.frameCard, owned && styles.frameOwned]}>
+                <View style={styles.framePreview}>
+                  <AnimatedAvatar
+                    letter={profile?.username?.charAt(0).toUpperCase() || '?'}
+                    size={56}
+                    frameType={item.animation_type}
+                    frameColor={item.color}
+                  />
+                </View>
+                <View style={styles.frameInfo}>
+                  <Text style={styles.frameName}>{item.name}</Text>
+                  <Text style={styles.frameDesc} numberOfLines={2}>{item.description}</Text>
+                  {owned ? (
+                    <View style={styles.ownedBadge}>
+                      <Text style={styles.ownedText}>✓ Owned</Text>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={[styles.buyBtn, !canAfford && styles.buyBtnDisabled, { alignSelf: 'flex-start' }]}
+                      onPress={() => handleBuyFrame(item.id, item.price, item.name)}
+                      disabled={buyingFrame === item.id || !canAfford}
+                    >
+                      {buyingFrame === item.id ? (
+                        <ActivityIndicator size="small" color="#fff" />
+                      ) : (
+                        <Text style={styles.buyBtnText}>🪙 {item.price}</Text>
+                      )}
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+            );
+          }}
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <Text style={styles.emptyIcon}>✨</Text>
+              <Text style={styles.emptyText}>No frames available</Text>
+              <Text style={styles.emptySub}>Check back soon!</Text>
+            </View>
+          }
+        />
+      ) : tab === 'badges' ? (
+        <FlatList
+          key="badges-grid"
           data={badges}
           keyExtractor={item => item.id.toString()}
           numColumns={2}
@@ -115,9 +207,11 @@ export default function ShopScreen() {
             const canAfford = (profile?.coins ?? 0) >= item.price;
             return (
               <View style={[styles.badgeCard, owned && styles.badgeOwned]}>
-                <Text style={styles.badgeEmoji}>{item.emoji}</Text>
-                <Text style={styles.badgeName}>{item.name}</Text>
-                <Text style={styles.badgeDesc} numberOfLines={2}>{item.description}</Text>
+                <View style={styles.badgeContent}>
+                  <Text style={styles.badgeEmoji}>{item.emoji}</Text>
+                  <Text style={styles.badgeName}>{item.name}</Text>
+                  <Text style={styles.badgeDesc} numberOfLines={2}>{item.description}</Text>
+                </View>
                 {owned ? (
                   <View style={styles.ownedBadge}>
                     <Text style={styles.ownedText}>✓ Owned</Text>
@@ -215,8 +309,8 @@ export default function ShopScreen() {
             <View style={styles.infoRow}>
               <Text style={styles.infoEmoji}>✨</Text>
               <View style={styles.infoContent}>
-                <Text style={styles.infoItemTitle}>More Coming Soon</Text>
-                <Text style={styles.infoItemDesc}>Custom themes, profile effects, and exclusive access</Text>
+                <Text style={styles.infoItemTitle}>Avatar Frames</Text>
+                <Text style={styles.infoItemDesc}>Animated effects that make your avatar stand out everywhere</Text>
               </View>
             </View>
           </View>
@@ -290,11 +384,13 @@ function getStyles(colors: any) {
     badgeCard: {
       flex: 1, backgroundColor: colors.surface, borderRadius: 16, padding: 16,
       marginBottom: 10, alignItems: 'center', borderWidth: 1, borderColor: colors.surfaceBorder,
+      justifyContent: 'space-between', gap: 12,
     },
     badgeOwned: { borderColor: '#fbbf24' + '40', backgroundColor: '#fbbf24' + '08' },
+    badgeContent: { alignItems: 'center', flex: 1 },
     badgeEmoji: { fontSize: 40, marginBottom: 8 },
     badgeName: { fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 4, textAlign: 'center' },
-    badgeDesc: { fontSize: 11, color: colors.textSecondary, textAlign: 'center', marginBottom: 12, lineHeight: 16 },
+    badgeDesc: { fontSize: 11, color: colors.textSecondary, textAlign: 'center', marginBottom: 0, lineHeight: 16 },
     buyBtn: {
       backgroundColor: Colors.primary, borderRadius: 10, paddingHorizontal: 20, paddingVertical: 10,
       width: '100%', alignItems: 'center',
@@ -306,6 +402,18 @@ function getStyles(colors: any) {
       width: '100%', alignItems: 'center',
     },
     ownedText: { color: '#fbbf24', fontWeight: '700', fontSize: 14 },
+    // Frames tab
+    frameList: { padding: 16, paddingBottom: 40 },
+    frameCard: {
+      flexDirection: 'row', backgroundColor: colors.surface, borderRadius: 16, padding: 16,
+      marginBottom: 10, borderWidth: 1, borderColor: colors.surfaceBorder, alignItems: 'center',
+    },
+    frameOwned: { borderColor: '#fbbf24' + '40', backgroundColor: '#fbbf24' + '08' },
+    framePreview: { width: 80, height: 80, justifyContent: 'center', alignItems: 'center', marginRight: 14 },
+    frameInfo: { flex: 1 },
+    frameName: { fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 4 },
+    frameDesc: { fontSize: 12, color: colors.textSecondary, marginBottom: 10, lineHeight: 17 },
+
     empty: { alignItems: 'center', paddingTop: 60 },
     emptyIcon: { fontSize: 48, marginBottom: 12 },
     emptyText: { fontSize: 18, fontWeight: '600', color: colors.text },

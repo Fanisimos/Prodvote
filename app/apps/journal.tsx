@@ -7,6 +7,8 @@ import {
   StyleSheet,
   ScrollView,
   FlatList,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Colors from '../../constants/Colors';
@@ -119,7 +121,11 @@ export default function JournalScreen() {
   })();
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={90}
+    >
       {/* Toggle */}
       <View style={styles.toggle}>
         <TouchableOpacity
@@ -238,7 +244,7 @@ export default function JournalScreen() {
           }
         />
       )}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

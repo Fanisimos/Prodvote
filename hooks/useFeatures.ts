@@ -104,14 +104,39 @@ export function useVote() {
     setVoting(true);
     try {
       if (hasVoted) {
-        await supabase.from('votes').delete().eq('feature_id', featureId).eq('user_id', userId);
+        // Try RPC first, fallback to direct delete
+        const { error: rpcError } = await supabase.rpc('remove_vote', {
+          p_user_id: userId,
+          p_feature_id: featureId,
+        });
+        if (rpcError) {
+          await supabase.from('votes').delete().eq('feature_id', featureId).eq('user_id', userId);
+        }
+        return { success: true };
       } else {
-        await supabase.from('votes').insert({ feature_id: featureId, user_id: userId, weight: 1 });
-        awardCoins(userId, 'vote'); // +2 coins for voting
+        // Try RPC with vote limits + weight
+        const { data, error: rpcError } = await supabase.rpc('use_vote', {
+          p_user_id: userId,
+          p_feature_id: featureId,
+        });
+
+        if (rpcError) {
+          // Fallback: direct insert (no limit enforcement)
+          await supabase.from('votes').insert({ feature_id: featureId, user_id: userId, weight: 1 });
+          awardCoins(userId, 'vote');
+          return { success: true };
+        }
+
+        const result = typeof data === 'string' ? JSON.parse(data) : data;
+        if (!result.success) {
+          return { success: false, error: result.error, votes_remaining: result.votes_remaining };
+        }
+
+        awardCoins(userId, 'vote');
+        return { success: true, votes_remaining: result.votes_remaining, weight: result.weight };
       }
-      return { success: true };
     } catch {
-      return { success: false };
+      return { success: false, error: 'Something went wrong' };
     } finally {
       setVoting(false);
     }
@@ -161,7 +186,7 @@ export function useComments(featureId: string) {
       .from('comments')
       .select(`
         *,
-        profiles:user_id (username, avatar_url, tier),
+        profiles:user_id (username, avatar_url, tier, active_frame_id, active_frame:active_frame_id (animation_type, color)),
         badges:badge_id (emoji, name, color)
       `)
       .eq('feature_id', featureId)
@@ -202,6 +227,8 @@ export function useComments(featureId: string) {
           username: c.profiles?.username,
           avatar_url: c.profiles?.avatar_url,
           tier: c.profiles?.tier,
+          active_frame_type: c.profiles?.active_frame?.animation_type || null,
+          active_frame_color: c.profiles?.active_frame?.color || null,
           badge_emoji: c.badges?.emoji,
           badge_name: c.badges?.name,
           badge_color: c.badges?.color,

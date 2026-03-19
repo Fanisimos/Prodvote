@@ -17,6 +17,7 @@ import { useAuthContext } from '../../lib/AuthContext';
 import { useTheme } from '../../lib/ThemeContext';
 import Colors from '../../constants/Colors';
 import { Stack } from 'expo-router';
+import AnimatedAvatar from '../../components/AnimatedAvatar';
 
 const ADMIN_USERNAMES = ['Fanisimos', 'Fanisimos_ADMIN'];
 
@@ -51,7 +52,7 @@ export default function ChatRoomScreen() {
   async function handleSend() {
     if (!text.trim() || !session?.user.id || sending) return;
     setSending(true);
-    const { error } = await sendMessage(text, session.user.id);
+    const { error } = await sendMessage(text, session.user.id, profile?.username, profile?.tier);
     if (!error) setText('');
     setSending(false);
   }
@@ -121,15 +122,22 @@ export default function ChatRoomScreen() {
                 {showHeader && (
                   <View style={styles.messageHeader}>
                     <TouchableOpacity
-                      style={[styles.msgAvatar, { backgroundColor: tierColor }]}
                       onPress={() => router.push(`/profile/${item.user_id}`)}
                     >
-                      <Text style={styles.msgAvatarText}>
-                        {(item.username || '?').charAt(0).toUpperCase()}
-                      </Text>
+                      <AnimatedAvatar
+                        letter={(item.username || '?').charAt(0).toUpperCase()}
+                        size={28}
+                        tierColor={tierColor}
+                        frameType={item.active_frame_type}
+                        frameColor={item.active_frame_color}
+                      />
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => router.push(`/profile/${item.user_id}`)}>
-                      <Text style={[styles.msgUsername, { color: tierColor }]}>
+                      <Text style={[
+                        styles.msgUsername,
+                        { color: tierColor },
+                        item.tier === 'legendary' && styles.legendaryName,
+                      ]}>
                         {item.username || 'Unknown'}
                       </Text>
                     </TouchableOpacity>
@@ -214,6 +222,7 @@ function getStyles(colors: any) {
     },
     msgAvatarText: { color: '#fff', fontWeight: '800', fontSize: 12 },
     msgUsername: { fontWeight: '700', fontSize: 14 },
+    legendaryName: { color: '#fbbf24', fontWeight: '900', textShadowColor: '#fbbf2440', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 6 },
     msgActiveBadge: { fontSize: 14 },
     msgTierBadge: { fontSize: 12 },
     msgTime: { fontSize: 11, color: colors.textSecondary },
@@ -221,16 +230,16 @@ function getStyles(colors: any) {
       fontSize: 15,
       color: colors.text,
       lineHeight: 22,
-      paddingLeft: 36,
+      paddingLeft: 52,
     },
     msgBodyContinued: {
-      paddingLeft: 36,
+      paddingLeft: 52,
     },
     pinnedBadge: {
       fontSize: 11,
       color: '#fbbf24',
       fontWeight: '600',
-      paddingLeft: 36,
+      paddingLeft: 52,
       marginTop: 2,
     },
 

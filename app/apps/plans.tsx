@@ -56,7 +56,6 @@ const PLANS: Plan[] = [
       'Pro badge next to your name',
       'Early access to new apps',
       'Priority feature submissions',
-      'Ad-free experience',
     ],
   },
   {
@@ -68,13 +67,12 @@ const PLANS: Plan[] = [
     badge: '👑',
     tag: 'POWER USER',
     features: [
+      'Everything in Pro',
       'Unlimited votes',
       '1,000 coins every month',
       'Exclusive Ultra badge + glow',
       'Votes count 3x more weight',
       'Priority feature requests',
-      'Custom profile effects',
-      'Everything in Pro',
     ],
   },
   {
@@ -87,9 +85,8 @@ const PLANS: Plan[] = [
     tag: 'GOAT STATUS',
     features: [
       'Everything in Ultra',
-      '1,000 coins every month',
+      '+1,500 extra coins every month',
       'Exclusive 🐐 GOAT badge',
-      'Animated profile border',
       'Name in gold on comments',
       'You\'re literally just supporting us',
       'And we love you for it',
@@ -100,7 +97,7 @@ const PLANS: Plan[] = [
 
 const COMPARISON = [
   { feature: 'Monthly votes', free: '3', pro: '10', ultra: '∞', legendary: '∞' },
-  { feature: 'Monthly coins', free: '0', pro: '300', ultra: '1,000', legendary: '1,000' },
+  { feature: 'Monthly coins', free: '0', pro: '300', ultra: '1,000', legendary: '2,500' },
   { feature: 'Vote weight', free: '1x', pro: '1x', ultra: '3x', legendary: '3x' },
   { feature: 'Profile badge', free: '—', pro: '⚡', ultra: '👑', legendary: '🐐' },
   { feature: 'Early access', free: '—', pro: '✓', ultra: '✓', legendary: '✓' },

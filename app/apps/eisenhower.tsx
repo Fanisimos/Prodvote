@@ -10,6 +10,7 @@ import {
   Pressable,
   Alert,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useTasks, QUADRANTS, Quadrant, Task } from '../../hooks/useTasks';
 import Colors from '../../constants/Colors';
@@ -245,46 +246,48 @@ export default function TasksScreen() {
 
       {/* Add Task Modal */}
       <Modal visible={showAddModal} transparent animationType="slide">
-        <Pressable style={styles.modalOverlay} onPress={() => setShowAddModal(false)}>
-          <Pressable style={styles.modalContent} onPress={() => {}}>
-            <Text style={styles.modalTitle}>New Task</Text>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <Pressable style={styles.modalOverlay} onPress={() => setShowAddModal(false)}>
+            <Pressable style={styles.modalContent} onPress={() => {}}>
+              <Text style={styles.modalTitle}>New Task</Text>
 
-            <TextInput
-              ref={inputRef}
-              style={styles.modalInput}
-              placeholder="What needs to be done?"
-              placeholderTextColor="#64748b"
-              value={newTaskText}
-              onChangeText={setNewTaskText}
-              autoFocus
-              onSubmitEditing={handleAddTask}
-              returnKeyType="done"
-            />
+              <TextInput
+                ref={inputRef}
+                style={styles.modalInput}
+                placeholder="What needs to be done?"
+                placeholderTextColor="#64748b"
+                value={newTaskText}
+                onChangeText={setNewTaskText}
+                autoFocus
+                onSubmitEditing={handleAddTask}
+                returnKeyType="done"
+              />
 
-            <Text style={styles.modalLabel}>QUADRANT</Text>
-            <View style={styles.quadrantPicker}>
-              {(['do', 'schedule', 'delegate', 'eliminate'] as Quadrant[]).map(q => (
-                <TouchableOpacity
-                  key={q}
-                  style={[
-                    styles.quadrantOption,
-                    selectedQuadrant === q && { backgroundColor: QUADRANTS[q].color + '22', borderColor: QUADRANTS[q].color },
-                  ]}
-                  onPress={() => setSelectedQuadrant(q)}
-                >
-                  <View style={[styles.optionDot, { backgroundColor: QUADRANTS[q].color }]} />
-                  <Text style={[styles.optionText, selectedQuadrant === q && { color: QUADRANTS[q].color }]}>
-                    {QUADRANTS[q].label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+              <Text style={styles.modalLabel}>QUADRANT</Text>
+              <View style={styles.quadrantPicker}>
+                {(['do', 'schedule', 'delegate', 'eliminate'] as Quadrant[]).map(q => (
+                  <TouchableOpacity
+                    key={q}
+                    style={[
+                      styles.quadrantOption,
+                      selectedQuadrant === q && { backgroundColor: QUADRANTS[q].color + '22', borderColor: QUADRANTS[q].color },
+                    ]}
+                    onPress={() => setSelectedQuadrant(q)}
+                  >
+                    <View style={[styles.optionDot, { backgroundColor: QUADRANTS[q].color }]} />
+                    <Text style={[styles.optionText, selectedQuadrant === q && { color: QUADRANTS[q].color }]}>
+                      {QUADRANTS[q].label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
 
-            <TouchableOpacity style={styles.modalButton} onPress={handleAddTask}>
-              <Text style={styles.modalButtonText}>Add Task</Text>
-            </TouchableOpacity>
+              <TouchableOpacity style={styles.modalButton} onPress={handleAddTask}>
+                <Text style={styles.modalButtonText}>Add Task</Text>
+              </TouchableOpacity>
+            </Pressable>
           </Pressable>
-        </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Move Task Modal */}
@@ -307,24 +310,26 @@ export default function TasksScreen() {
 
       {/* Add Subtask Modal */}
       <Modal visible={subtaskInput.visible} transparent animationType="fade">
-        <Pressable style={styles.modalOverlay} onPress={() => setSubtaskInput({ taskId: '', visible: false })}>
-          <Pressable style={styles.moveModalContent} onPress={() => {}}>
-            <Text style={styles.modalTitle}>Add Subtask</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="Subtask..."
-              placeholderTextColor="#64748b"
-              value={subtaskText}
-              onChangeText={setSubtaskText}
-              autoFocus
-              onSubmitEditing={confirmSubtask}
-              returnKeyType="done"
-            />
-            <TouchableOpacity style={styles.modalButton} onPress={confirmSubtask}>
-              <Text style={styles.modalButtonText}>Add</Text>
-            </TouchableOpacity>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <Pressable style={styles.modalOverlay} onPress={() => setSubtaskInput({ taskId: '', visible: false })}>
+            <Pressable style={styles.moveModalContent} onPress={() => {}}>
+              <Text style={styles.modalTitle}>Add Subtask</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="Subtask..."
+                placeholderTextColor="#64748b"
+                value={subtaskText}
+                onChangeText={setSubtaskText}
+                autoFocus
+                onSubmitEditing={confirmSubtask}
+                returnKeyType="done"
+              />
+              <TouchableOpacity style={styles.modalButton} onPress={confirmSubtask}>
+                <Text style={styles.modalButtonText}>Add</Text>
+              </TouchableOpacity>
+            </Pressable>
           </Pressable>
-        </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );

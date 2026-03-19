@@ -30,6 +30,11 @@ export function useAuth() {
   }, []);
 
   async function fetchProfile(userId: string) {
+    // Check monthly renewal (auto-grants coins + resets votes if 30 days passed)
+    try {
+      await supabase.rpc('check_monthly_renewal', { p_user_id: userId });
+    } catch {}
+
     const { data } = await supabase
       .from('profiles')
       .select('*')

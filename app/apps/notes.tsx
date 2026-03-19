@@ -8,6 +8,8 @@ import {
   FlatList,
   Modal,
   Pressable,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Colors from '../../constants/Colors';
@@ -159,47 +161,49 @@ export default function NotesScreen() {
 
       {/* Editor Modal */}
       <Modal visible={editing !== null} transparent animationType="slide">
-        <Pressable style={styles.modalOverlay} onPress={saveNote}>
-          <Pressable style={styles.modalContent} onPress={() => {}}>
-            <View style={styles.editorHeader}>
-              <Text style={styles.modalTitle}>{editing?.id ? 'Edit Note' : 'New Note'}</Text>
-              <View style={styles.editorActions}>
-                {editing?.id && (
-                  <>
-                    <TouchableOpacity onPress={() => togglePin(editing.id)} style={styles.actionBtn}>
-                      <Text style={styles.actionText}>{editing.pinned ? '📌' : 'Pin'}</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => deleteNote(editing.id)} style={styles.actionBtn}>
-                      <Text style={[styles.actionText, { color: colors.error }]}>Delete</Text>
-                    </TouchableOpacity>
-                  </>
-                )}
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <Pressable style={styles.modalOverlay} onPress={saveNote}>
+            <Pressable style={styles.modalContent} onPress={() => {}}>
+              <View style={styles.editorHeader}>
+                <Text style={styles.modalTitle}>{editing?.id ? 'Edit Note' : 'New Note'}</Text>
+                <View style={styles.editorActions}>
+                  {editing?.id && (
+                    <>
+                      <TouchableOpacity onPress={() => togglePin(editing.id)} style={styles.actionBtn}>
+                        <Text style={styles.actionText}>{editing.pinned ? '📌' : 'Pin'}</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => deleteNote(editing.id)} style={styles.actionBtn}>
+                        <Text style={[styles.actionText, { color: colors.error }]}>Delete</Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
+                </View>
               </View>
-            </View>
 
-            <TextInput
-              style={styles.titleInput}
-              placeholder="Title"
-              placeholderTextColor="#64748b"
-              value={title}
-              onChangeText={setTitle}
-              autoFocus
-            />
-            <TextInput
-              style={styles.bodyInput}
-              placeholder="Start writing..."
-              placeholderTextColor="#64748b"
-              value={body}
-              onChangeText={setBody}
-              multiline
-              textAlignVertical="top"
-            />
+              <TextInput
+                style={styles.titleInput}
+                placeholder="Title"
+                placeholderTextColor="#64748b"
+                value={title}
+                onChangeText={setTitle}
+                autoFocus
+              />
+              <TextInput
+                style={styles.bodyInput}
+                placeholder="Start writing..."
+                placeholderTextColor="#64748b"
+                value={body}
+                onChangeText={setBody}
+                multiline
+                textAlignVertical="top"
+              />
 
-            <TouchableOpacity style={styles.saveBtn} onPress={saveNote}>
-              <Text style={styles.saveBtnText}>Save</Text>
-            </TouchableOpacity>
+              <TouchableOpacity style={styles.saveBtn} onPress={saveNote}>
+                <Text style={styles.saveBtnText}>Save</Text>
+              </TouchableOpacity>
+            </Pressable>
           </Pressable>
-        </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );

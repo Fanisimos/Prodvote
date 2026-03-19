@@ -16,6 +16,8 @@ interface Stats {
   totalVotes: number;
   totalComments: number;
   totalBadgesPurchased: number;
+  totalCoinsInCirculation: number;
+  totalSubscribers: number;
   tierBreakdown: Record<string, number>;
   statusBreakdown: Record<string, number>;
   recentSignups: { username: string; created_at: string; tier: string }[];
@@ -49,15 +51,19 @@ export default function DashboardScreen() {
       supabase.from('votes').select('*', { count: 'exact', head: true }),
       supabase.from('comments').select('*', { count: 'exact', head: true }),
       supabase.from('user_badges').select('*', { count: 'exact', head: true }),
-      supabase.from('profiles').select('tier'),
+      supabase.from('profiles').select('tier, coins'),
       supabase.from('features').select('status'),
       supabase.from('profiles').select('username, created_at, tier').order('created_at', { ascending: false }).limit(5),
       supabase.from('features').select('title, score, status, comment_count').order('score', { ascending: false }).limit(5),
     ]);
 
     const tierBreakdown: Record<string, number> = {};
+    let totalCoinsInCirculation = 0;
+    let totalSubscribers = 0;
     (profiles || []).forEach((p: any) => {
       tierBreakdown[p.tier] = (tierBreakdown[p.tier] || 0) + 1;
+      totalCoinsInCirculation += p.coins || 0;
+      if (p.tier !== 'free') totalSubscribers++;
     });
 
     const statusBreakdown: Record<string, number> = {};
@@ -71,6 +77,8 @@ export default function DashboardScreen() {
       totalVotes: totalVotes || 0,
       totalComments: totalComments || 0,
       totalBadgesPurchased: totalBadgesPurchased || 0,
+      totalCoinsInCirculation,
+      totalSubscribers,
       tierBreakdown,
       statusBreakdown,
       recentSignups: recentSignups || [],
@@ -129,6 +137,16 @@ export default function DashboardScreen() {
           <Text style={styles.statEmoji}>🏅</Text>
           <Text style={styles.statValue}>{stats.totalBadgesPurchased}</Text>
           <Text style={styles.statLabel}>Badges Sold</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statEmoji}>💎</Text>
+          <Text style={styles.statValue}>{stats.totalSubscribers}</Text>
+          <Text style={styles.statLabel}>Subscribers</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statEmoji}>🪙</Text>
+          <Text style={styles.statValue}>{stats.totalCoinsInCirculation.toLocaleString()}</Text>
+          <Text style={styles.statLabel}>Coins in Circulation</Text>
         </View>
       </View>
 

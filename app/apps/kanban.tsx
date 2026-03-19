@@ -10,6 +10,7 @@ import {
   Pressable,
   Alert,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Colors from '../../constants/Colors';
@@ -150,38 +151,40 @@ export default function KanbanScreen() {
 
       {/* Add Card Modal */}
       <Modal visible={showAdd} transparent animationType="slide">
-        <Pressable style={styles.modalOverlay} onPress={() => setShowAdd(false)}>
-          <Pressable style={styles.modalContent} onPress={() => {}}>
-            <Text style={styles.modalTitle}>
-              Add to {COLUMNS[addColumn].label}
-            </Text>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <Pressable style={styles.modalOverlay} onPress={() => setShowAdd(false)}>
+            <Pressable style={styles.modalContent} onPress={() => {}}>
+              <Text style={styles.modalTitle}>
+                Add to {COLUMNS[addColumn].label}
+              </Text>
 
-            <TextInput
-              style={styles.input}
-              placeholder="What needs to be done?"
-              placeholderTextColor="#64748b"
-              value={newText}
-              onChangeText={setNewText}
-              autoFocus
-              multiline
-            />
+              <TextInput
+                style={styles.input}
+                placeholder="What needs to be done?"
+                placeholderTextColor="#64748b"
+                value={newText}
+                onChangeText={setNewText}
+                autoFocus
+                multiline
+              />
 
-            <Text style={styles.label}>COLOR</Text>
-            <View style={styles.colorRow}>
-              {CARD_COLORS.map(c => (
-                <TouchableOpacity
-                  key={c}
-                  style={[styles.colorDot, { backgroundColor: c }, selectedColor === c && styles.colorSelected]}
-                  onPress={() => setSelectedColor(c)}
-                />
-              ))}
-            </View>
+              <Text style={styles.label}>COLOR</Text>
+              <View style={styles.colorRow}>
+                {CARD_COLORS.map(c => (
+                  <TouchableOpacity
+                    key={c}
+                    style={[styles.colorDot, { backgroundColor: c }, selectedColor === c && styles.colorSelected]}
+                    onPress={() => setSelectedColor(c)}
+                  />
+                ))}
+              </View>
 
-            <TouchableOpacity style={styles.addBtn} onPress={addCard}>
-              <Text style={styles.addBtnText}>Add Card</Text>
-            </TouchableOpacity>
+              <TouchableOpacity style={styles.addBtn} onPress={addCard}>
+                <Text style={styles.addBtnText}>Add Card</Text>
+              </TouchableOpacity>
+            </Pressable>
           </Pressable>
-        </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Move Card Modal */}
