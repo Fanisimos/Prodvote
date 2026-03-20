@@ -39,6 +39,12 @@
           "icon": "./assets/app-icon-Prodvote.png",
           "color": "#7c5cfc"
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Prodvote to access your photos to set a profile picture."
+        }
       ]
     ],
     "experiments": {
