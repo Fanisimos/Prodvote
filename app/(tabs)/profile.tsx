@@ -88,7 +88,7 @@ export default function ProfileScreen() {
                   tierColor={tier.color}
                   frameType={activeFrame?.animation_type}
                   frameColor={activeFrame?.color}
-                  imageUri={profile.avatar_url}
+                  // imageUri={profile.avatar_url}
                 />
               </TouchableOpacity>
               <Text style={styles.username}>@{profile.username}</Text>

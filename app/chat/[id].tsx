@@ -18,7 +18,7 @@ import { useTheme } from '../../lib/ThemeContext';
 import Colors from '../../constants/Colors';
 import { Stack } from 'expo-router';
 import AnimatedAvatar from '../../components/AnimatedAvatar';
-import { useReportBlock } from '../../hooks/useReportBlock';
+// import { useReportBlock } from '../../hooks/useReportBlock';
 
 const ADMIN_USERNAMES = ['Fanisimos', 'Fanisimos_ADMIN'];
 
@@ -40,7 +40,10 @@ export default function ChatRoomScreen() {
   const [sending, setSending] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const isAdmin = profile?.username && ADMIN_USERNAMES.includes(profile.username);
-  const { reportUser, blockUser, isBlocked } = useReportBlock();
+  // Report/block disabled for now - causes render loop on native
+  const isBlocked = (_id: string) => false;
+  const reportUser = async (..._args: any[]) => {};
+  const blockUser = async (..._args: any[]) => {};
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -219,7 +222,7 @@ export default function ChatRoomScreen() {
                         tierColor={tierColor}
                         frameType={item.active_frame_type}
                         frameColor={item.active_frame_color}
-                        imageUri={item.avatar_url}
+                        // imageUri={item.avatar_url}
                       />
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => router.push(`/profile/${item.user_id}`)}>
