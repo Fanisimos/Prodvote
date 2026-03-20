@@ -10,7 +10,7 @@ export default {
   light: {
     text: '#2e1065',
     textSecondary: '#7c6caa',
-    background: '#f5f0ff',
+    background: '#ede5ff',
     surface: '#ffffff',
     surfaceBorder: '#e0d4fc',
     tint: primary,

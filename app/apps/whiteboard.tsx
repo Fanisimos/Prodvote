@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -33,31 +33,51 @@ export default function WhiteboardScreen() {
   const [currentPath, setCurrentPath] = useState('');
   const [undoneStrokes, setUndoneStrokes] = useState<Stroke[]>([]);
 
-  const panResponder = useRef(
-    PanResponder.create({
+  // Use refs to track current values so PanResponder closure stays fresh
+  const currentPathRef = useRef('');
+  const currentColorRef = useRef(currentColor);
+  const currentWidthRef = useRef(currentWidth);
+  const isEraserRef = useRef(isEraser);
+  const colorsRef = useRef(colors);
+
+  currentColorRef.current = currentColor;
+  currentWidthRef.current = currentWidth;
+  isEraserRef.current = isEraser;
+  colorsRef.current = colors;
+
+  const panResponder = useMemo(
+    () => PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: (evt) => {
         const { locationX, locationY } = evt.nativeEvent;
-        setCurrentPath(`M${locationX},${locationY}`);
+        const path = `M${locationX},${locationY}`;
+        currentPathRef.current = path;
+        setCurrentPath(path);
         setUndoneStrokes([]);
       },
       onPanResponderMove: (evt) => {
         const { locationX, locationY } = evt.nativeEvent;
-        setCurrentPath(prev => `${prev} L${locationX},${locationY}`);
+        const updated = `${currentPathRef.current} L${locationX},${locationY}`;
+        currentPathRef.current = updated;
+        setCurrentPath(updated);
       },
       onPanResponderRelease: () => {
-        if (currentPath) {
+        const path = currentPathRef.current;
+        if (path) {
+          const erasing = isEraserRef.current;
           setStrokes(prev => [...prev, {
-            path: currentPath,
-            color: isEraser ? colors.background : currentColor,
-            width: isEraser ? 24 : currentWidth,
+            path,
+            color: erasing ? colorsRef.current.background : currentColorRef.current,
+            width: erasing ? 24 : currentWidthRef.current,
           }]);
+          currentPathRef.current = '';
           setCurrentPath('');
         }
       },
-    })
-  ).current;
+    }),
+    []
+  );
 
   function undo() {
     if (strokes.length === 0) return;

@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { useChannels } from '../../hooks/useChat';
 import { useTheme } from '../../lib/ThemeContext';
 import Colors from '../../constants/Colors';
+import Watermark from '../../components/Watermark';
 
 export default function ChatScreen() {
   const { colors } = useTheme();
@@ -20,6 +21,7 @@ export default function ChatScreen() {
 
   return (
     <View style={styles.container}>
+      <Watermark />
       <FlatList
         data={channels}
         keyExtractor={item => item.id}
@@ -28,6 +30,9 @@ export default function ChatScreen() {
           <TouchableOpacity
             style={styles.channelCard}
             onPress={() => router.push(`/chat/${item.id}?name=${encodeURIComponent(item.name)}&emoji=${encodeURIComponent(item.emoji)}`)}
+            accessibilityLabel={`${item.emoji} ${item.name} channel${item.is_locked ? ', locked' : ''}`}
+            accessibilityHint="Double tap to open chat"
+            accessibilityRole="button"
           >
             <View style={[styles.channelIcon, { backgroundColor: item.color + '20' }]}>
               <Text style={styles.channelEmoji}>{item.emoji}</Text>

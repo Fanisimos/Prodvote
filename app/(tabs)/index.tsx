@@ -20,8 +20,8 @@ import { supabase } from '../../lib/supabase';
 import { Feature, FeatureStatus } from '../../lib/types';
 import Colors from '../../constants/Colors';
 import { useTheme } from '../../lib/ThemeContext';
+import Watermark from '../../components/Watermark';
 
-const ADMIN_USERNAMES = ['Fanisimos', 'Fanisimos_ADMIN'];
 
 const TIER_BADGES: Record<string, { emoji: string; label: string; color: string }> = {
   pro: { emoji: '⚡', label: 'Pro', color: '#7c5cfc' },
@@ -65,8 +65,20 @@ function FeatureCard({
 }) {
   const styles = getStyles(colors);
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
-      <TouchableOpacity style={styles.voteCol} onPress={onVote}>
+    <TouchableOpacity
+      style={styles.card}
+      onPress={onPress}
+      activeOpacity={0.7}
+      accessibilityLabel={`Feature: ${item.title}, ${item.score} votes`}
+      accessibilityHint="Double tap to view details"
+      accessibilityRole="button"
+    >
+      <TouchableOpacity
+        style={styles.voteCol}
+        onPress={onVote}
+        accessibilityLabel={item.user_has_voted ? `Remove vote, current score ${item.score}` : `Upvote, current score ${item.score}`}
+        accessibilityRole="button"
+      >
         <Text style={[styles.voteArrow, item.user_has_voted && styles.voteActive]}>▲</Text>
         <Text style={[styles.voteCount, item.user_has_voted && styles.voteActive]}>
           {item.score}
@@ -110,7 +122,7 @@ function FeatureCard({
         )}
 
         <View style={styles.cardFooter}>
-          <TouchableOpacity onPress={onAuthorPress}>
+          <TouchableOpacity onPress={onAuthorPress} accessibilityLabel={`View profile of ${item.author_username}`} accessibilityRole="link">
             <Text style={[
               styles.meta,
               { fontWeight: '700' },
@@ -135,11 +147,11 @@ function FeatureCard({
           {item.is_boosted && <Text style={styles.boostBadge}>🚀 Boosted</Text>}
           {item.dev_hearted && <Text style={styles.heartBadge}>❤️ Loved by dev</Text>}
           <Text style={styles.meta}>💬 {item.comment_count}</Text>
-          <TouchableOpacity onPress={onAward} style={styles.awardBtn}>
+          <TouchableOpacity onPress={onAward} style={styles.awardBtn} accessibilityLabel="Give award" accessibilityRole="button">
             <Text style={styles.awardBtnText}>🏅</Text>
           </TouchableOpacity>
           {isAdmin && (
-            <TouchableOpacity onPress={onHeart} style={styles.heartBtn}>
+            <TouchableOpacity onPress={onHeart} style={styles.heartBtn} accessibilityLabel={item.dev_hearted ? 'Remove dev heart' : 'Add dev heart'} accessibilityRole="button">
               <Text style={{ fontSize: 14 }}>{item.dev_hearted ? '💔' : '❤️'}</Text>
             </TouchableOpacity>
           )}
@@ -154,7 +166,7 @@ export default function FeedScreen() {
   const { session, profile, fetchProfile } = useAuthContext();
   const { colors } = useTheme();
   const styles = getStyles(colors);
-  const isAdmin = !!profile?.username && ADMIN_USERNAMES.includes(profile.username);
+  const isAdmin = !!profile?.is_admin;
   const [sortBy, setSortBy] = useState<'score' | 'newest' | 'comments'>('score');
   const { features, loading, refreshing, loadingMore, hasMore, refresh, loadMore, markUserVotes } = useFeatures(sortBy);
   const { toggleVote } = useVote();
@@ -217,12 +229,16 @@ export default function FeedScreen() {
 
   return (
     <View style={styles.container}>
+      <Watermark />
       <View style={styles.sortBar}>
         {SORT_OPTIONS.map(opt => (
           <TouchableOpacity
             key={opt.key}
             style={[styles.sortButton, sortBy === opt.key && styles.sortButtonActive]}
             onPress={() => setSortBy(opt.key)}
+            accessibilityLabel={`Sort by ${opt.label}`}
+            accessibilityRole="button"
+            accessibilityState={{ selected: sortBy === opt.key }}
           >
             <Text style={[styles.sortText, sortBy === opt.key && styles.sortTextActive]}>
               {opt.label}

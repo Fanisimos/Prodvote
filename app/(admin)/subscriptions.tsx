@@ -16,7 +16,7 @@ const TIER_COLORS: Record<string, string> = {
 
 const TIER_PERKS: Record<string, { votes: string; coins: number; weight: string }> = {
   free: { votes: '3/month', coins: 0, weight: '1x' },
-  pro: { votes: '10/month', coins: 300, weight: '1x' },
+  pro: { votes: '10/month', coins: 600, weight: '1x' },
   ultra: { votes: 'Unlimited', coins: 1000, weight: '3x' },
   legendary: { votes: 'Unlimited', coins: 2500, weight: '3x' },
 };
@@ -250,7 +250,7 @@ export default function SubscriptionsScreen() {
           </View>
           {[
             { perk: 'Monthly Votes', free: '3', pro: '10', ultra: '∞', legendary: '∞' },
-            { perk: 'Monthly Coins', free: '0', pro: '300', ultra: '1,000', legendary: '2,500' },
+            { perk: 'Monthly Coins', free: '0', pro: '600', ultra: '1,000', legendary: '2,500' },
             { perk: 'Vote Weight', free: '1x', pro: '1x', ultra: '3x', legendary: '3x' },
             { perk: 'Gold Name', free: '—', pro: '—', ultra: '—', legendary: '✓' },
             { perk: 'Priority Subs', free: '—', pro: '✓', ultra: '✓', legendary: '✓' },

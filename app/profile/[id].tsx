@@ -2,7 +2,7 @@ import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity
 import { useLocalSearchParams, Stack } from 'expo-router';
 import { usePublicProfile } from '../../hooks/usePublicProfile';
 import { useAuthContext } from '../../lib/AuthContext';
-// import { useReportBlock } from '../../hooks/useReportBlock';
+import { useReportBlock } from '../../hooks/useReportBlock';
 import { useTheme } from '../../lib/ThemeContext';
 import Colors from '../../constants/Colors';
 import AnimatedAvatar from '../../components/AnimatedAvatar';
@@ -20,11 +20,7 @@ export default function PublicProfileScreen() {
   const styles = getStyles(colors);
   const { session } = useAuthContext();
   const { profile, badges, stats, loading } = usePublicProfile(id);
-  // Report/block disabled for now
-  const isBlocked = (_id: string) => false;
-  const reportUser = async (..._args: any[]) => {};
-  const blockUser = async (..._args: any[]) => {};
-  const unblockUser = async (..._args: any[]) => {};
+  const { isBlocked, reportUser, blockUser, unblockUser } = useReportBlock();
   const isOwnProfile = session?.user.id === id;
 
   if (loading || !profile) {
@@ -51,7 +47,7 @@ export default function PublicProfileScreen() {
           tierColor={tier.color}
           frameType={profile.active_frame_type}
           frameColor={profile.active_frame_color}
-          // imageUri={profile.avatar_url}
+          imageUri={profile.avatar_url}
         />
         <Text style={styles.username}>@{profile.username}</Text>
         <View style={styles.badgeRow}>

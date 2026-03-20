@@ -45,6 +45,13 @@
         {
           "photosPermission": "Allow Prodvote to access your photos to set a profile picture."
         }
+      ],
+      [
+        "@sentry/react-native/expo",
+        {
+          "organization": "litsai-technologies",
+          "project": "prodvote"
+        }
       ]
     ],
     "experiments": {

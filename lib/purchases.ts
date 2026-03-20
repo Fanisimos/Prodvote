@@ -2,8 +2,9 @@ import { Platform } from 'react-native';
 import Purchases, { LOG_LEVEL, PurchasesPackage, CustomerInfo } from 'react-native-purchases';
 import { supabase } from './supabase';
 
-// RevenueCat API keys (same key for now — add platform-specific keys when you set up Apple/Google)
-const API_KEY = 'appl_lxPVqeQCAiilJdIIYJZSQmgyYrZ';
+// RevenueCat API keys — loaded from environment variables
+const IOS_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY!;
+const ANDROID_API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY!;
 
 // Entitlement IDs — these must match what you set up in RevenueCat dashboard
 export const ENTITLEMENTS = {
@@ -17,6 +18,9 @@ export const PRODUCT_IDS = {
   pro_monthly: 'prodvote_pro_monthly',
   ultra_monthly: 'prodvote_ultra_monthly',
   legendary_monthly: 'prodvote_legendary_monthly',
+  coins_1000: 'prodvote_coins_1000',
+  coins_2500: 'prodvote_coins_2500',
+  coins_5000: 'prodvote_coins_5000',
 };
 
 let initialized = false;
@@ -26,13 +30,10 @@ export async function initPurchases(userId?: string) {
   if (initialized) return;
 
   try {
-    Purchases.setLogLevel(LOG_LEVEL.DEBUG);
+    if (__DEV__) Purchases.setLogLevel(LOG_LEVEL.DEBUG);
 
-    if (Platform.OS === 'ios') {
-      await Purchases.configure({ apiKey: API_KEY, appUserID: userId });
-    } else if (Platform.OS === 'android') {
-      await Purchases.configure({ apiKey: API_KEY, appUserID: userId });
-    }
+    const apiKey = Platform.OS === 'ios' ? IOS_API_KEY : ANDROID_API_KEY;
+    await Purchases.configure({ apiKey, appUserID: userId });
 
     initialized = true;
   } catch (e) {
@@ -105,6 +106,32 @@ export async function syncTierFromPurchase(customerInfo: CustomerInfo) {
   }
 
   return tier;
+}
+
+// Purchase a coin pack (consumable IAP)
+export async function purchaseCoinPack(productId: string, coinsAmount: number) {
+  if (Platform.OS === 'web') {
+    return { success: false, error: 'Purchases not available on web' };
+  }
+  try {
+    const { customerInfo } = await Purchases.purchaseStoreProduct(
+      await Purchases.getProducts([productId]).then(p => p[0])
+    );
+
+    // Grant coins in Supabase
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.rpc('grant_coin_pack', { p_user_id: user.id, p_amount: coinsAmount });
+    }
+
+    return { success: true, customerInfo };
+  } catch (e: any) {
+    if (e.userCancelled) {
+      return { success: false, cancelled: true };
+    }
+    console.log('Coin pack purchase error:', e);
+    return { success: false, error: e.message };
+  }
 }
 
 // Check current tier from RevenueCat

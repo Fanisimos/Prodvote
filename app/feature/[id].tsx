@@ -22,8 +22,6 @@ import { FeatureStatus } from '../../lib/types';
 import Colors from '../../constants/Colors';
 import AnimatedAvatar from '../../components/AnimatedAvatar';
 
-// Admin usernames
-const ADMIN_USERNAMES = ['Fanisimos', 'Fanisimos_ADMIN'];
 
 const TIER_COLORS: Record<string, string> = {
   free: '#94a3b8',
@@ -58,7 +56,7 @@ export default function FeatureDetailScreen() {
   const [showFeatureAwardPicker, setShowFeatureAwardPicker] = useState(false);
   const [awarding, setAwarding] = useState(false);
 
-  const isAdmin = !!profile?.username && ADMIN_USERNAMES.includes(profile.username);
+  const isAdmin = !!profile?.is_admin;
   const ownedBadges = badges.filter(b => ownedIds.has(b.id));
 
   async function handleComment() {
@@ -227,7 +225,7 @@ export default function FeatureDetailScreen() {
                     tierColor={TIER_COLORS[item.tier || 'free'] || '#94a3b8'}
                     frameType={item.active_frame_type}
                     frameColor={item.active_frame_color}
-                    // imageUri={item.avatar_url}
+                    imageUri={item.avatar_url}
                   />
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => router.push(`/profile/${item.user_id}`)}>

@@ -17,6 +17,7 @@ import { useCategories } from '../../hooks/useFeatures';
 import { awardCoins } from '../../lib/coinRewards';
 import Colors from '../../constants/Colors';
 import { useTheme } from '../../lib/ThemeContext';
+import Watermark from '../../components/Watermark';
 
 export default function SubmitScreen() {
   const router = useRouter();
@@ -80,6 +81,8 @@ export default function SubmitScreen() {
   }
 
   return (
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <Watermark />
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.label}>Title</Text>
       <TextInput
@@ -89,6 +92,8 @@ export default function SubmitScreen() {
         value={title}
         onChangeText={setTitle}
         maxLength={120}
+        accessibilityLabel="Feature title"
+        accessibilityHint="Enter a short title for your feature request"
       />
       <Text style={styles.charCount}>{title.length}/120</Text>
 
@@ -102,6 +107,9 @@ export default function SubmitScreen() {
         multiline
         numberOfLines={5}
         textAlignVertical="top"
+        maxLength={1000}
+        accessibilityLabel="Feature description"
+        accessibilityHint="Describe the feature and why it matters"
       />
 
       <Text style={styles.label}>Category</Text>
@@ -114,6 +122,9 @@ export default function SubmitScreen() {
               categoryId === cat.id && { backgroundColor: cat.color, borderColor: cat.color },
             ]}
             onPress={() => setCategoryId(cat.id)}
+            accessibilityLabel={`Category: ${cat.name}`}
+            accessibilityRole="button"
+            accessibilityState={{ selected: categoryId === cat.id }}
           >
             <Text
               style={[
@@ -145,6 +156,8 @@ export default function SubmitScreen() {
         style={[styles.submitButton, loading && styles.submitDisabled]}
         onPress={handleSubmit}
         disabled={loading}
+        accessibilityLabel="Submit feature request"
+        accessibilityRole="button"
       >
         {loading ? (
           <ActivityIndicator color="#fff" />
@@ -153,6 +166,7 @@ export default function SubmitScreen() {
         )}
       </TouchableOpacity>
     </ScrollView>
+    </View>
   );
 }
 
@@ -160,7 +174,7 @@ function getStyles(colors: any) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: 'transparent',
     },
     content: {
       padding: 20,

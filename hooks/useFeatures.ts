@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { Feature, Badge } from '../lib/types';
 import { awardCoins } from '../lib/coinRewards';
+import { getCached, setCache } from '../lib/cache';
 
 type SortBy = 'score' | 'newest' | 'comments';
 type FilterStatus = 'all' | 'open' | 'planned' | 'in_progress' | 'shipped';
@@ -44,8 +45,20 @@ export function useFeatures(sortBy: SortBy = 'score', filterStatus: FilterStatus
   }, []);
 
   const fetchFeatures = useCallback(async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    else setLoading(true);
+    const cacheKey = `features_${sortBy}_${filterStatus}`;
+
+    // Show cached data immediately on first load
+    if (!isRefresh) {
+      const cached = await getCached<Feature[]>(cacheKey);
+      if (cached && cached.length > 0) {
+        setFeatures(cached);
+        setLoading(false);
+      } else {
+        setLoading(true);
+      }
+    } else {
+      setRefreshing(true);
+    }
 
     let query = supabase.from('features_with_details').select('*');
 
@@ -69,9 +82,12 @@ export function useFeatures(sortBy: SortBy = 'score', filterStatus: FilterStatus
 
     if (!error && data) {
       const awardsMap = await fetchAwards(data.map((f: any) => f.id));
-      setFeatures(data.map((f: any) => ({ ...f, awards: awardsMap[f.id] || [] })));
+      const enriched = data.map((f: any) => ({ ...f, awards: awardsMap[f.id] || [] }));
+      setFeatures(enriched);
       setHasMore(data.length === PAGE_SIZE);
       setPage(1);
+      // Cache for offline access
+      await setCache(cacheKey, enriched, 5 * 60 * 1000);
     }
     setLoading(false);
     setRefreshing(false);

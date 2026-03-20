@@ -61,6 +61,8 @@ export default function LoginScreen() {
             onChangeText={setEmail}
             autoCapitalize="none"
             keyboardType="email-address"
+            accessibilityLabel="Email address"
+            accessibilityHint="Enter your email to sign in"
           />
           <TextInput
             style={styles.input}
@@ -69,6 +71,8 @@ export default function LoginScreen() {
             value={password}
             onChangeText={setPassword}
             secureTextEntry
+            accessibilityLabel="Password"
+            accessibilityHint="Enter your password to sign in"
           />
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -77,6 +81,8 @@ export default function LoginScreen() {
             style={[styles.button, loading && styles.buttonDisabled]}
             onPress={handleLogin}
             disabled={loading}
+            accessibilityLabel="Sign in"
+            accessibilityRole="button"
           >
             {loading ? (
               <ActivityIndicator color="#fff" />
@@ -86,7 +92,7 @@ export default function LoginScreen() {
           </TouchableOpacity>
 
           <Link href="/(auth)/register" asChild>
-            <TouchableOpacity style={styles.linkButton}>
+            <TouchableOpacity style={styles.linkButton} accessibilityLabel="Go to sign up" accessibilityRole="link">
               <Text style={styles.linkText}>
                 Don't have an account? <Text style={styles.linkBold}>Sign Up</Text>
               </Text>

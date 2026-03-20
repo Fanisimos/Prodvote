@@ -20,22 +20,22 @@ import { useTheme } from '../../lib/ThemeContext';
 import { useDailyReward } from '../../hooks/useDailyReward';
 import DailyRewardModal from '../../components/DailyRewardModal';
 import AnimatedAvatar from '../../components/AnimatedAvatar';
+import Watermark from '../../components/Watermark';
 
 const TIER_INFO: Record<string, { label: string; color: string; emoji: string; perks: string }> = {
   free: { label: 'Free', color: '#94a3b8', emoji: '🆓', perks: '3 votes/mo · 0 coins/mo' },
-  pro: { label: 'Pro', color: '#7c5cfc', emoji: '⚡', perks: '10 votes/mo · 300 coins/mo' },
+  pro: { label: 'Pro', color: '#7c5cfc', emoji: '⚡', perks: '10 votes/mo · 600 coins/mo' },
   ultra: { label: 'Ultra', color: '#fbbf24', emoji: '👑', perks: '∞ votes · 1,000 coins/mo' },
   legendary: { label: 'Legendary', color: '#ff4d6a', emoji: '🐐', perks: '∞ votes · 2,500 coins/mo · GOAT' },
 };
 
-const ADMIN_USERNAMES = ['Fanisimos', 'Fanisimos_ADMIN'];
 
 export default function ProfileScreen() {
   const { profile, session, signOut, fetchProfile } = useAuthContext();
   const { colors, isDark, toggleTheme } = useTheme();
   const styles = getStyles(colors);
   const router = useRouter();
-  const isAdmin = profile?.username && ADMIN_USERNAMES.includes(profile.username);
+  const isAdmin = !!profile?.is_admin;
   const [myFeatures, setMyFeatures] = useState<Feature[]>([]);
   const [loading, setLoading] = useState(true);
   const [showRewardModal, setShowRewardModal] = useState(false);
@@ -74,6 +74,7 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.container}>
+      <Watermark />
       <FlatList
         data={myFeatures}
         keyExtractor={item => item.id}
@@ -88,7 +89,7 @@ export default function ProfileScreen() {
                   tierColor={tier.color}
                   frameType={activeFrame?.animation_type}
                   frameColor={activeFrame?.color}
-                  // imageUri={profile.avatar_url}
+                  imageUri={profile.avatar_url}
                 />
               </TouchableOpacity>
               <Text style={styles.username}>@{profile.username}</Text>
@@ -317,6 +318,12 @@ export default function ProfileScreen() {
             <TouchableOpacity style={styles.themeBtn} onPress={toggleTheme}>
               <Text style={styles.themeBtnEmoji}>{isDark ? '☀️' : '🌙'}</Text>
               <Text style={styles.themeBtnText}>{isDark ? 'Light Mode' : 'Dark Mode'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.settingsButton}
+              onPress={() => router.push('/apps/settings')}
+            >
+              <Text style={styles.settingsText}>⚙️  Settings</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.signOutButton} onPress={signOut}>
               <Text style={styles.signOutText}>Sign Out</Text>
@@ -586,6 +593,13 @@ function getStyles(colors: any) {
     },
     themeBtnEmoji: { fontSize: 18 },
     themeBtnText: { color: colors.text, fontWeight: '600', fontSize: 15 },
+
+    // Settings
+    settingsButton: {
+      marginHorizontal: 16, marginTop: 10, padding: 14, borderRadius: 12,
+      backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.surfaceBorder, alignItems: 'center',
+    },
+    settingsText: { color: colors.text, fontWeight: '600', fontSize: 15 },
 
     // Sign out
     signOutButton: {

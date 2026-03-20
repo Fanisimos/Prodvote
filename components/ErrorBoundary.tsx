@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { captureError } from '../lib/sentry';
 
 interface State {
   hasError: boolean;
@@ -11,6 +12,10 @@ export default class ErrorBoundary extends React.Component<{ children: React.Rea
 
   static getDerivedStateFromError(error: Error) {
     return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    captureError(error, { componentStack: errorInfo.componentStack || '' });
   }
 
   render() {

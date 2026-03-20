@@ -13,14 +13,16 @@ import {
 import { useAuthContext } from '../../lib/AuthContext';
 import { useBadges } from '../../hooks/useFeatures';
 import { useAvatarFrames } from '../../hooks/useAvatarFrames';
+import { purchaseCoinPack } from '../../lib/purchases';
+import Watermark from '../../components/Watermark';
 import Colors from '../../constants/Colors';
 import { useTheme } from '../../lib/ThemeContext';
 import AnimatedAvatar from '../../components/AnimatedAvatar';
 
 const COIN_PACKS = [
-  { id: 'pack1', coins: 1000, price: '£4.99', label: 'Starter', perCoin: '£0.005', color: '#ffb347', popular: false },
-  { id: 'pack2', coins: 2500, price: '£8.99', label: 'Popular', perCoin: '£0.004', color: '#7c5cfc', popular: true },
-  { id: 'pack3', coins: 5000, price: '£14.99', label: 'Best Value', perCoin: '£0.003', color: '#fbbf24', popular: false },
+  { id: 'prodvote_coins_1000', coins: 1000, price: '£4.99', label: 'Starter', perCoin: '£0.005', color: '#ffb347', popular: false },
+  { id: 'prodvote_coins_2500', coins: 2500, price: '£8.99', label: 'Popular', perCoin: '£0.004', color: '#7c5cfc', popular: true },
+  { id: 'prodvote_coins_5000', coins: 5000, price: '£14.99', label: 'Best Value', perCoin: '£0.003', color: '#fbbf24', popular: false },
 ];
 
 export default function ShopScreen() {
@@ -77,13 +79,24 @@ export default function ShopScreen() {
     setBuyingFrame(null);
   }
 
-  function handleBuyCoins(packId: string, coins: number, price: string) {
-    // TODO: Integrate Stripe/IAP here
+  const [buyingCoins, setBuyingCoins] = useState<string | null>(null);
+
+  async function handleBuyCoins(packId: string, coins: number, price: string) {
     if (Platform.OS === 'web') {
-      alert(`Payment coming soon! ${coins} coins for ${price}`);
-    } else {
-      Alert.alert('Coming Soon', `${coins} coins for ${price}\n\nPayment integration coming soon!`);
+      alert(`Coin purchases are only available in the mobile app.`);
+      return;
     }
+    if (!session?.user.id) return;
+
+    setBuyingCoins(packId);
+    const result = await purchaseCoinPack(packId, coins);
+    if (result.success) {
+      fetchProfile(session.user.id);
+      Alert.alert('Success!', `${coins.toLocaleString()} coins added to your account!`);
+    } else if (!result.cancelled) {
+      Alert.alert('Error', result.error || 'Purchase failed. Please try again.');
+    }
+    setBuyingCoins(null);
   }
 
   if (loading) {
@@ -96,6 +109,7 @@ export default function ShopScreen() {
 
   return (
     <View style={styles.container}>
+      <Watermark />
       {/* Coins header */}
       <View style={styles.coinsBar}>
         <View style={styles.coinsLeft}>
@@ -108,6 +122,8 @@ export default function ShopScreen() {
         <TouchableOpacity
           style={styles.buyCoinsBtn}
           onPress={() => setTab('coins')}
+          accessibilityLabel="Buy coins"
+          accessibilityRole="button"
         >
           <Text style={styles.buyCoinsBtnText}>+ Buy Coins</Text>
         </TouchableOpacity>
@@ -118,18 +134,27 @@ export default function ShopScreen() {
         <TouchableOpacity
           style={[styles.toggleBtn, tab === 'badges' && styles.toggleActive]}
           onPress={() => setTab('badges')}
+          accessibilityLabel="Badges tab"
+          accessibilityRole="tab"
+          accessibilityState={{ selected: tab === 'badges' }}
         >
           <Text style={[styles.toggleText, tab === 'badges' && styles.toggleTextActive]}>Badges</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.toggleBtn, tab === 'frames' && styles.toggleActive]}
           onPress={() => setTab('frames')}
+          accessibilityLabel="Frames tab"
+          accessibilityRole="tab"
+          accessibilityState={{ selected: tab === 'frames' }}
         >
           <Text style={[styles.toggleText, tab === 'frames' && styles.toggleTextActive]}>Frames</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.toggleBtn, tab === 'coins' && styles.toggleActive]}
           onPress={() => setTab('coins')}
+          accessibilityLabel="Coins tab"
+          accessibilityRole="tab"
+          accessibilityState={{ selected: tab === 'coins' }}
         >
           <Text style={[styles.toggleText, tab === 'coins' && styles.toggleTextActive]}>Coins</Text>
         </TouchableOpacity>
@@ -174,6 +199,8 @@ export default function ShopScreen() {
                       style={[styles.buyBtn, !canAfford && styles.buyBtnDisabled, { alignSelf: 'flex-start' }]}
                       onPress={() => handleBuyFrame(item.id, item.price, item.name)}
                       disabled={buyingFrame === item.id || !canAfford}
+                      accessibilityLabel={`Buy ${item.name} frame for ${item.price} coins`}
+                      accessibilityRole="button"
                     >
                       {buyingFrame === item.id ? (
                         <ActivityIndicator size="small" color="#fff" />
@@ -221,6 +248,8 @@ export default function ShopScreen() {
                     style={[styles.buyBtn, !canAfford && styles.buyBtnDisabled]}
                     onPress={() => handleBuy(item.id, item.price, item.name)}
                     disabled={buying === item.id || !canAfford}
+                    accessibilityLabel={`Buy ${item.name} badge for ${item.price} coins`}
+                    accessibilityRole="button"
                   >
                     {buying === item.id ? (
                       <ActivityIndicator size="small" color="#fff" />
@@ -263,6 +292,8 @@ export default function ShopScreen() {
               style={[styles.packCard, pack.popular && styles.packPopular]}
               onPress={() => handleBuyCoins(pack.id, pack.coins, pack.price)}
               activeOpacity={0.7}
+              accessibilityLabel={`Buy ${pack.coins} coins for ${pack.price}`}
+              accessibilityRole="button"
             >
               {pack.popular && (
                 <View style={styles.popularTag}>

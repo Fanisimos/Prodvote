@@ -18,9 +18,8 @@ import { useTheme } from '../../lib/ThemeContext';
 import Colors from '../../constants/Colors';
 import { Stack } from 'expo-router';
 import AnimatedAvatar from '../../components/AnimatedAvatar';
-// import { useReportBlock } from '../../hooks/useReportBlock';
+import { useReportBlock } from '../../hooks/useReportBlock';
 
-const ADMIN_USERNAMES = ['Fanisimos', 'Fanisimos_ADMIN'];
 
 const TIER_COLORS: Record<string, string> = {
   free: '#94a3b8',
@@ -39,11 +38,8 @@ export default function ChatRoomScreen() {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const flatListRef = useRef<FlatList>(null);
-  const isAdmin = profile?.username && ADMIN_USERNAMES.includes(profile.username);
-  // Report/block disabled for now - causes render loop on native
-  const isBlocked = (_id: string) => false;
-  const reportUser = async (..._args: any[]) => {};
-  const blockUser = async (..._args: any[]) => {};
+  const isAdmin = !!profile?.is_admin;
+  const { isBlocked, reportUser, blockUser } = useReportBlock();
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -222,7 +218,7 @@ export default function ChatRoomScreen() {
                         tierColor={tierColor}
                         frameType={item.active_frame_type}
                         frameColor={item.active_frame_color}
-                        // imageUri={item.avatar_url}
+                        imageUri={item.avatar_url}
                       />
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => router.push(`/profile/${item.user_id}`)}>
@@ -269,11 +265,15 @@ export default function ChatRoomScreen() {
           maxLength={500}
           onSubmitEditing={handleSend}
           blurOnSubmit={false}
+          accessibilityLabel="Message input"
+          accessibilityHint="Type a message to send in this channel"
         />
         <TouchableOpacity
           style={[styles.sendBtn, !text.trim() && styles.sendBtnDisabled]}
           onPress={handleSend}
           disabled={!text.trim() || sending}
+          accessibilityLabel="Send message"
+          accessibilityRole="button"
         >
           <Text style={styles.sendBtnText}>↑</Text>
         </TouchableOpacity>

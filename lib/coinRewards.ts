@@ -7,33 +7,21 @@ const REWARD_AMOUNTS: Record<string, number> = {
   feature_submitted: 15,
 };
 
+const VALID_TYPES = new Set(Object.keys(REWARD_AMOUNTS));
+
 export async function awardCoins(
   userId: string,
   rewardType: 'vote' | 'comment' | 'feature_submitted',
 ) {
+  if (!VALID_TYPES.has(rewardType)) return;
   const amount = REWARD_AMOUNTS[rewardType];
-  if (!amount) return;
 
-  // Insert reward record
-  await supabase.from('coin_rewards').insert({
-    user_id: userId,
-    reward_type: rewardType,
-    amount,
+  // Single atomic RPC call — no read-then-write race condition
+  await supabase.rpc('award_coins_atomic', {
+    p_user_id: userId,
+    p_reward_type: rewardType,
+    p_amount: amount,
   });
-
-  // Update profile coins
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('coins')
-    .eq('id', userId)
-    .single();
-
-  if (profile) {
-    await supabase
-      .from('profiles')
-      .update({ coins: (profile.coins || 0) + amount })
-      .eq('id', userId);
-  }
 
   return amount;
 }

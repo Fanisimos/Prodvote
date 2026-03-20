@@ -85,10 +85,15 @@ export default function EditProfileScreen() {
   async function pickImage() {
     try {
       const ImagePicker = getImagePicker();
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        showAlert('Permission needed', 'Please allow access to your photo library.');
-        return;
+
+      // On iOS 14+, PHPicker doesn't need explicit permission.
+      // Only request on Android or older iOS.
+      if (Platform.OS !== 'ios') {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          showAlert('Permission needed', 'Please allow access to your photo library.');
+          return;
+        }
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -98,12 +103,13 @@ export default function EditProfileScreen() {
         quality: 0.7,
       });
 
-      if (!result.canceled && result.assets[0]) {
+      if (!result.canceled && result.assets && result.assets.length > 0) {
         setAvatarUri(result.assets[0].uri);
         setAvatarChanged(true);
         setSuccess(false);
       }
     } catch (e: any) {
+      console.warn('Image picker error:', e);
       showAlert('Error', 'Could not open image picker. Please try again.');
     }
   }
@@ -210,10 +216,11 @@ export default function EditProfileScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
     >
       <Stack.Screen options={{ title: 'Edit Profile' }} />
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         {/* Avatar preview */}
         <TouchableOpacity style={styles.avatarSection} onPress={pickImage} activeOpacity={0.7}>
           <AnimatedAvatar

@@ -4,6 +4,9 @@ import { Profile } from '../lib/types';
 import { Session } from '@supabase/supabase-js';
 import { initPurchases } from '../lib/purchases';
 import { registerForPushNotifications, scheduleDailyReminder } from '../lib/notifications';
+import { getCached, setCache } from '../lib/cache';
+import { initAnalytics, identify, Events } from '../lib/analytics';
+import { setUser as setSentryUser, clearUser as clearSentryUser } from '../lib/sentry';
 
 export function useAuth() {
   const [session, setSession] = useState<Session | null>(null);
@@ -30,6 +33,13 @@ export function useAuth() {
   }, []);
 
   async function fetchProfile(userId: string) {
+    // Show cached profile immediately while fetching fresh data
+    const cached = await getCached<Profile>(`profile_${userId}`);
+    if (cached && !profile) {
+      setProfile(cached);
+      setLoading(false);
+    }
+
     // Check monthly renewal (auto-grants coins + resets votes if 30 days passed)
     try {
       await supabase.rpc('check_monthly_renewal', { p_user_id: userId });
@@ -43,8 +53,16 @@ export function useAuth() {
     setProfile(data);
     setLoading(false);
 
-    // Initialize RevenueCat with user ID
+    // Cache the fresh profile
+    if (data) await setCache(`profile_${userId}`, data, 10 * 60 * 1000);
+
+    // Initialize RevenueCat and analytics with user ID
     initPurchases(userId);
+    initAnalytics(userId);
+    if (data) {
+      identify(userId, { username: data.username, tier: data.tier });
+      setSentryUser(userId, data.username);
+    }
 
     // Register for push notifications
     registerForPushNotifications(userId);
@@ -66,6 +84,8 @@ export function useAuth() {
   }
 
   async function signOut() {
+    Events.signOut();
+    clearSentryUser();
     await supabase.auth.signOut();
     setProfile(null);
     setSession(null);

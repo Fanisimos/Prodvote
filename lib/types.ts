@@ -11,6 +11,7 @@ export interface Profile {
   boosts_remaining: number;
   coins: number;
   is_banned: boolean;
+  is_admin: boolean;
   created_at: string;
   last_login_date: string | null;
   login_streak: number;
@@ -19,6 +20,7 @@ export interface Profile {
   subscription_started_at: string | null;
   last_monthly_grant_at: string | null;
   last_vote_reset_at: string | null;
+  accepted_terms_at: string | null;
 }
 
 export interface AvatarFrame {

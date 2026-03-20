@@ -1,6 +1,9 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Colors from '../constants/Colors';
+
+const THEME_KEY = 'prodvote_theme';
 
 type ThemeColors = typeof Colors.dark;
 
@@ -18,21 +21,40 @@ const ThemeContext = createContext<ThemeContextType>({
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [isDark, setIsDark] = useState(true);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    // Load saved preference
-    if (Platform.OS === 'web') {
-      const saved = localStorage.getItem('prodvote_theme');
-      if (saved === 'light') setIsDark(false);
-    }
+    loadTheme();
   }, []);
+
+  async function loadTheme() {
+    try {
+      if (Platform.OS === 'web') {
+        const saved = localStorage.getItem(THEME_KEY);
+        if (saved === 'light') setIsDark(false);
+      } else {
+        const saved = await AsyncStorage.getItem(THEME_KEY);
+        if (saved === 'light') setIsDark(false);
+      }
+    } catch {}
+    setLoaded(true);
+  }
+
+  async function saveTheme(dark: boolean) {
+    const value = dark ? 'dark' : 'light';
+    try {
+      if (Platform.OS === 'web') {
+        localStorage.setItem(THEME_KEY, value);
+      } else {
+        await AsyncStorage.setItem(THEME_KEY, value);
+      }
+    } catch {}
+  }
 
   function toggleTheme() {
     setIsDark(prev => {
       const next = !prev;
-      if (Platform.OS === 'web') {
-        localStorage.setItem('prodvote_theme', next ? 'dark' : 'light');
-      }
+      saveTheme(next);
       return next;
     });
   }

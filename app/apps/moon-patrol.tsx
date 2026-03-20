@@ -1,13 +1,26 @@
-import { View, Text, StyleSheet, Platform } from 'react-native';
+import { View, StyleSheet, Platform, ActivityIndicator } from 'react-native';
 import { useTheme } from '../../lib/ThemeContext';
 import { WebView } from 'react-native-webview';
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
+import { Asset } from 'expo-asset';
 
-const GAME_HTML = require('../../public/games/moon-patrol.html');
+const GAME_ASSET = require('../../public/games/moon-patrol.html');
 
 export default function MoonPatrolScreen() {
   const { colors } = useTheme();
   const webViewRef = useRef(null);
+  const [gameUri, setGameUri] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    (async () => {
+      const asset = Asset.fromModule(GAME_ASSET);
+      await asset.downloadAsync();
+      if (asset.localUri) {
+        setGameUri(asset.localUri);
+      }
+    })();
+  }, []);
 
   if (Platform.OS === 'web') {
     return (
@@ -26,11 +39,19 @@ export default function MoonPatrolScreen() {
     );
   }
 
+  if (!gameUri) {
+    return (
+      <View style={[styles.container, styles.loading]}>
+        <ActivityIndicator size="large" color="#4dc9f6" />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <WebView
         ref={webViewRef}
-        source={GAME_HTML}
+        source={{ uri: gameUri }}
         style={{ flex: 1, backgroundColor: '#000' }}
         javaScriptEnabled
         domStorageEnabled
@@ -39,6 +60,10 @@ export default function MoonPatrolScreen() {
         scrollEnabled={false}
         bounces={false}
         overScrollMode="never"
+        originWhitelist={['*']}
+        allowFileAccess
+        allowFileAccessFromFileURLs
+        allowUniversalAccessFromFileURLs
       />
     </View>
   );
@@ -46,4 +71,5 @@ export default function MoonPatrolScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
+  loading: { justifyContent: 'center', alignItems: 'center' },
 });

@@ -114,17 +114,17 @@ export default function AnimatedAvatar({
         ));
         // Layer 3: Slow spin
         anims.push(Animated.loop(
-          Animated.timing(anim3, { toValue: 1, duration: 6000, easing: Easing.linear, useNativeDriver: true })
+          Animated.timing(anim3, { toValue: 1, duration: 6000, easing: Easing.linear, useNativeDriver: false })
         ));
         // Layer 4: Counter spin
         anims.push(Animated.loop(
-          Animated.timing(anim4, { toValue: 1, duration: 8000, easing: Easing.linear, useNativeDriver: true })
+          Animated.timing(anim4, { toValue: 1, duration: 8000, easing: Easing.linear, useNativeDriver: false })
         ));
         // Layer 5: Pulse breathe
         anim5.setValue(1);
         anims.push(Animated.loop(Animated.sequence([
-          Animated.timing(anim5, { toValue: 1.05, duration: 2000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-          Animated.timing(anim5, { toValue: 0.97, duration: 2000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+          Animated.timing(anim5, { toValue: 1.05, duration: 2000, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+          Animated.timing(anim5, { toValue: 0.97, duration: 2000, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
         ])));
         break;
 
@@ -260,43 +260,43 @@ export default function AnimatedAvatar({
       case 'challenger':
         // 1: Outer platinum halo — majestic slow breathe
         anims.push(Animated.loop(Animated.sequence([
-          Animated.timing(anim1, { toValue: 1, duration: 2200, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-          Animated.timing(anim1, { toValue: 0.35, duration: 2200, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+          Animated.timing(anim1, { toValue: 1, duration: 2200, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+          Animated.timing(anim1, { toValue: 0.35, duration: 2200, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
         ])));
         // 2: Diamond sparkle shimmer — irregular rapid flashes
         anims.push(Animated.loop(Animated.sequence([
-          Animated.timing(anim2, { toValue: 1, duration: 250, easing: Easing.linear, useNativeDriver: true }),
-          Animated.timing(anim2, { toValue: 0.15, duration: 180, easing: Easing.linear, useNativeDriver: true }),
-          Animated.timing(anim2, { toValue: 0.85, duration: 350, easing: Easing.linear, useNativeDriver: true }),
-          Animated.timing(anim2, { toValue: 0.05, duration: 120, easing: Easing.linear, useNativeDriver: true }),
-          Animated.timing(anim2, { toValue: 0.6, duration: 400, easing: Easing.linear, useNativeDriver: true }),
-          Animated.timing(anim2, { toValue: 0.2, duration: 300, easing: Easing.linear, useNativeDriver: true }),
+          Animated.timing(anim2, { toValue: 1, duration: 250, easing: Easing.linear, useNativeDriver: false }),
+          Animated.timing(anim2, { toValue: 0.15, duration: 180, easing: Easing.linear, useNativeDriver: false }),
+          Animated.timing(anim2, { toValue: 0.85, duration: 350, easing: Easing.linear, useNativeDriver: false }),
+          Animated.timing(anim2, { toValue: 0.05, duration: 120, easing: Easing.linear, useNativeDriver: false }),
+          Animated.timing(anim2, { toValue: 0.6, duration: 400, easing: Easing.linear, useNativeDriver: false }),
+          Animated.timing(anim2, { toValue: 0.2, duration: 300, easing: Easing.linear, useNativeDriver: false }),
         ])));
         // 3: Ornate wing arc A — slow majestic clockwise
         anims.push(Animated.loop(
-          Animated.timing(anim3, { toValue: 1, duration: 5000, easing: Easing.linear, useNativeDriver: true })
+          Animated.timing(anim3, { toValue: 1, duration: 5000, easing: Easing.linear, useNativeDriver: false })
         ));
         // 4: Ornate wing arc B — counter-clockwise
         anims.push(Animated.loop(
-          Animated.timing(anim4, { toValue: 1, duration: 7000, easing: Easing.linear, useNativeDriver: true })
+          Animated.timing(anim4, { toValue: 1, duration: 7000, easing: Easing.linear, useNativeDriver: false })
         ));
         // 5: Diamond burst shockwave — sharp white flash + scale out
         anims.push(Animated.loop(Animated.sequence([
-          Animated.timing(anim5, { toValue: 0, duration: 1800, easing: Easing.linear, useNativeDriver: true }),
-          Animated.timing(anim5, { toValue: 1, duration: 60, easing: Easing.linear, useNativeDriver: true }),
-          Animated.timing(anim5, { toValue: 0.2, duration: 120, easing: Easing.linear, useNativeDriver: true }),
-          Animated.timing(anim5, { toValue: 0.9, duration: 60, easing: Easing.linear, useNativeDriver: true }),
-          Animated.timing(anim5, { toValue: 0, duration: 600, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+          Animated.timing(anim5, { toValue: 0, duration: 1800, easing: Easing.linear, useNativeDriver: false }),
+          Animated.timing(anim5, { toValue: 1, duration: 60, easing: Easing.linear, useNativeDriver: false }),
+          Animated.timing(anim5, { toValue: 0.2, duration: 120, easing: Easing.linear, useNativeDriver: false }),
+          Animated.timing(anim5, { toValue: 0.9, duration: 60, easing: Easing.linear, useNativeDriver: false }),
+          Animated.timing(anim5, { toValue: 0, duration: 600, easing: Easing.out(Easing.ease), useNativeDriver: false }),
         ])));
         // 6: Grand scale pulse — breathing power
         anim6.setValue(1);
         anims.push(Animated.loop(Animated.sequence([
-          Animated.timing(anim6, { toValue: 1.08, duration: 1800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-          Animated.timing(anim6, { toValue: 0.96, duration: 1800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+          Animated.timing(anim6, { toValue: 1.08, duration: 1800, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+          Animated.timing(anim6, { toValue: 0.96, duration: 1800, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
         ])));
         // 7: Fast inner accent spin
         anims.push(Animated.loop(
-          Animated.timing(anim7, { toValue: 1, duration: 3000, easing: Easing.linear, useNativeDriver: true })
+          Animated.timing(anim7, { toValue: 1, duration: 3000, easing: Easing.linear, useNativeDriver: false })
         ));
         // 8: Gold-to-platinum color shift
         anims.push(Animated.loop(
@@ -304,20 +304,20 @@ export default function AnimatedAvatar({
         ));
         // 9: Particle orbit A — tiny dot spinning fast
         anims.push(Animated.loop(
-          Animated.timing(anim9, { toValue: 1, duration: 2000, easing: Easing.linear, useNativeDriver: true })
+          Animated.timing(anim9, { toValue: 1, duration: 2000, easing: Easing.linear, useNativeDriver: false })
         ));
         // 10: Particle orbit B — opposite direction, different speed
         anims.push(Animated.loop(
-          Animated.timing(anim10, { toValue: 1, duration: 2800, easing: Easing.linear, useNativeDriver: true })
+          Animated.timing(anim10, { toValue: 1, duration: 2800, easing: Easing.linear, useNativeDriver: false })
         ));
         // 11: Particle orbit C — wider, slower
         anims.push(Animated.loop(
-          Animated.timing(anim11, { toValue: 1, duration: 3600, easing: Easing.linear, useNativeDriver: true })
+          Animated.timing(anim11, { toValue: 1, duration: 3600, easing: Easing.linear, useNativeDriver: false })
         ));
         // 12: Shadow aura breathe — dark power backdrop
         anims.push(Animated.loop(Animated.sequence([
-          Animated.timing(anim12, { toValue: 0.5, duration: 2500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-          Animated.timing(anim12, { toValue: 0.15, duration: 2500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+          Animated.timing(anim12, { toValue: 0.5, duration: 2500, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+          Animated.timing(anim12, { toValue: 0.15, duration: 2500, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
         ])));
         break;
     }

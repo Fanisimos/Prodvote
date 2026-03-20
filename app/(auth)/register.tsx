@@ -33,8 +33,16 @@ export default function RegisterScreen() {
       setError('Username must be at least 3 characters');
       return;
     }
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
+    if (!/[A-Z]/.test(password)) {
+      setError('Password must include an uppercase letter');
+      return;
+    }
+    if (!/[0-9]/.test(password)) {
+      setError('Password must include a number');
       return;
     }
     setError('');
@@ -66,6 +74,8 @@ export default function RegisterScreen() {
             value={username}
             onChangeText={setUsername}
             autoCapitalize="none"
+            accessibilityLabel="Username"
+            accessibilityHint="Choose a username, at least 3 characters"
           />
           <TextInput
             style={styles.input}
@@ -75,6 +85,8 @@ export default function RegisterScreen() {
             onChangeText={setEmail}
             autoCapitalize="none"
             keyboardType="email-address"
+            accessibilityLabel="Email address"
+            accessibilityHint="Enter your email to create an account"
           />
           <TextInput
             style={styles.input}
@@ -83,6 +95,8 @@ export default function RegisterScreen() {
             value={password}
             onChangeText={setPassword}
             secureTextEntry
+            accessibilityLabel="Password"
+            accessibilityHint="Must be 8 or more characters with an uppercase letter and number"
           />
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -91,6 +105,8 @@ export default function RegisterScreen() {
             style={[styles.button, loading && styles.buttonDisabled]}
             onPress={handleRegister}
             disabled={loading}
+            accessibilityLabel="Create account"
+            accessibilityRole="button"
           >
             {loading ? (
               <ActivityIndicator color="#fff" />
@@ -100,7 +116,7 @@ export default function RegisterScreen() {
           </TouchableOpacity>
 
           <Link href="/(auth)/login" asChild>
-            <TouchableOpacity style={styles.linkButton}>
+            <TouchableOpacity style={styles.linkButton} accessibilityLabel="Go to sign in" accessibilityRole="link">
               <Text style={styles.linkText}>
                 Already have an account? <Text style={styles.linkBold}>Sign In</Text>
               </Text>

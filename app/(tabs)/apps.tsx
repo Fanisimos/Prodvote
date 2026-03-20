@@ -8,6 +8,7 @@ import {
 import { useRouter } from 'expo-router';
 import Colors from '../../constants/Colors';
 import { useTheme } from '../../lib/ThemeContext';
+import Watermark from '../../components/Watermark';
 
 interface AppCard {
   id: string;
@@ -110,6 +111,8 @@ export default function AppsScreen() {
   const styles = getStyles(colors);
 
   return (
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <Watermark />
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Community Banner */}
       <View style={styles.banner}>
@@ -223,6 +226,7 @@ export default function AppsScreen() {
         </View>
       </View>
     </ScrollView>
+    </View>
   );
 }
 
@@ -230,7 +234,7 @@ function getStyles(colors: any) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: 'transparent',
     },
     content: {
       padding: 20,
