@@ -778,7 +778,6 @@ export default function AnimatedAvatar({
             borderRadius: halfSize,
             borderColor: frameType ? color : tierColor,
             backgroundColor: Colors.primary,
-            overflow: 'hidden',
           },
         ]}
       >
@@ -786,6 +785,7 @@ export default function AnimatedAvatar({
           <Image
             source={{ uri: imageUri }}
             style={{ width: size - 6, height: size - 6, borderRadius: (size - 6) / 2 }}
+            resizeMode="cover"
           />
         ) : (
           <Text style={[s.avatarText, { fontSize: size * 0.37 }]}>

@@ -266,7 +266,7 @@ export default function ProfileScreen() {
                   {ownedFrames.map(f => {
                     const isActive = activeFrame?.id === f.id;
                     return (
-                      <View key={f.id} style={[styles.frameGridCard, { borderColor: isActive ? '#34d399' : f.color + '40' }]}>
+                      <View key={f.id} style={[styles.frameGridCard, { borderColor: isActive ? '#34d399' : (f.color || '#7c5cfc') + '40' }]}>
                         {isActive && (
                           <View style={styles.activeRibbon}>
                             <Text style={styles.activeRibbonText}>ACTIVE</Text>
