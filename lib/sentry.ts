@@ -1,46 +1,12 @@
-import * as Sentry from '@sentry/react-native';
+// Sentry disabled — native plugin removed from app.json
+// Re-enable when @sentry/react-native is added back as a plugin
 
-const DSN = process.env.EXPO_PUBLIC_SENTRY_DSN || '';
+export function initSentry() {}
 
-let initialized = false;
+export function setUser(_userId: string, _username?: string, _email?: string) {}
 
-export function initSentry() {
-  if (initialized || !DSN) return;
+export function clearUser() {}
 
-  Sentry.init({
-    dsn: DSN,
-    debug: __DEV__,
-    enabled: !__DEV__, // Only report in production
-    tracesSampleRate: 0.2, // 20% of transactions for performance monitoring
-    environment: __DEV__ ? 'development' : 'production',
-  });
+export function captureError(_error: Error, _context?: Record<string, any>) {}
 
-  initialized = true;
-}
-
-export function setUser(userId: string, username?: string, email?: string) {
-  if (!initialized) return;
-  Sentry.setUser({ id: userId, username, email });
-}
-
-export function clearUser() {
-  if (!initialized) return;
-  Sentry.setUser(null);
-}
-
-export function captureError(error: Error, context?: Record<string, any>) {
-  if (!initialized) return;
-  if (context) {
-    Sentry.withScope((scope) => {
-      scope.setExtras(context);
-      Sentry.captureException(error);
-    });
-  } else {
-    Sentry.captureException(error);
-  }
-}
-
-export function addBreadcrumb(message: string, category?: string, data?: Record<string, any>) {
-  if (!initialized) return;
-  Sentry.addBreadcrumb({ message, category, data, level: 'info' });
-}
+export function addBreadcrumb(_message: string, _category?: string, _data?: Record<string, any>) {}
