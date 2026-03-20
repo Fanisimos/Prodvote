@@ -12,7 +12,8 @@ import {
   KeyboardAvoidingView,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
+// Lazy import to avoid native module crash if not properly linked
+const getImagePicker = () => require('expo-image-picker');
 import { useAuthContext } from '../../lib/AuthContext';
 import { useTheme } from '../../lib/ThemeContext';
 import { supabase } from '../../lib/supabase';
@@ -82,23 +83,28 @@ export default function EditProfileScreen() {
   }
 
   async function pickImage() {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      showAlert('Permission needed', 'Please allow access to your photo library.');
-      return;
-    }
+    try {
+      const ImagePicker = getImagePicker();
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        showAlert('Permission needed', 'Please allow access to your photo library.');
+        return;
+      }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.7,
-    });
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+      });
 
-    if (!result.canceled && result.assets[0]) {
-      setAvatarUri(result.assets[0].uri);
-      setAvatarChanged(true);
-      setSuccess(false);
+      if (!result.canceled && result.assets[0]) {
+        setAvatarUri(result.assets[0].uri);
+        setAvatarChanged(true);
+        setSuccess(false);
+      }
+    } catch (e: any) {
+      showAlert('Error', 'Could not open image picker. Please try again.');
     }
   }
 

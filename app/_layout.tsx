@@ -3,6 +3,7 @@ import { Slot, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuthContext } from '../lib/AuthContext';
 import { ThemeProvider, useTheme } from '../lib/ThemeContext';
+import ErrorBoundary from '../components/ErrorBoundary';
 
 const ADMIN_EMAILS = ['tzoni@litsaitechnologies.com'];
 
@@ -41,10 +42,12 @@ function RootNavigation() {
 
 export default function RootLayout() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <RootNavigation />
-      </AuthProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <AuthProvider>
+          <RootNavigation />
+        </AuthProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
