@@ -1,0 +1,60 @@
+{
+  "expo": {
+    "name": "Prodvote",
+    "slug": "Prodvote",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/app-icon-Prodvote.png",
+    "scheme": "prodvote",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash-screen-for-Prodvote-app.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#0a0a0f"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.litsai.prodvote",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.litsai.prodvote",
+      "adaptiveIcon": {
+        "backgroundColor": "#0a0a0f",
+        "foregroundImage": "./assets/app-icon-Prodvote.png"
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/app-icon-Prodvote.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/app-icon-Prodvote.png",
+          "color": "#7c5cfc"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Prodvote to access your photos to set a profile picture."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "598ee5c0-a06a-4788-804e-45f8d2c68331"
+      }
+    }
+  }
+}
