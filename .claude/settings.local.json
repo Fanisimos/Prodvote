@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /tmp/prodvote-old -type f \\\\\\(-name eas.json -o -name babel.config.js -o -name metro.config.js -o -name .env* -o -name Gemfile -o -name ios -o -name android \\\\\\))",
+      "Bash(find /Users/Xspot/Desktop/Work/Projects/Prodvote -type f \\\\\\(-name *.json -o -name *.js -o -name *.ts -o -name *.tsx \\\\\\))",
+      "Bash(xcodebuild -version)",
+      "Bash(pod --version)",
+      "Bash(npx expo:*)",
+      "Bash(npx eas:*)",
+      "Bash(npm install:*)",
+      "Bash(eas build:*)",
+      "Bash(eas whoami:*)",
+      "Bash(eas init:*)",
+      "Bash(npx tsc:*)"
+    ]
+  }
+}
