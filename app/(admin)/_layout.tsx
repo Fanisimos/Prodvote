@@ -1,35 +1,45 @@
 import React from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
-import { Stack } from 'expo-router';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { Stack, useRouter } from 'expo-router';
 import { useAuthContext } from '../../lib/AuthContext';
+import { useTheme } from '../../lib/theme';
 
 export default function AdminLayout() {
   const { profile, loading } = useAuthContext();
+  const { theme } = useTheme();
+  const router = useRouter();
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#7c5cfc" />
+      <View style={[styles.center, { backgroundColor: theme.bg }]}>
+        <ActivityIndicator size="large" color={theme.accent} />
       </View>
     );
   }
 
   if (!profile?.is_admin) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.denied}>Access Denied</Text>
-        <Text style={styles.subtext}>You do not have admin privileges.</Text>
+      <View style={[styles.center, { backgroundColor: theme.bg }]}>
+        <Text style={[styles.denied, { color: theme.danger }]}>Access Denied</Text>
+        <Text style={{ color: theme.textMuted, fontSize: 16 }}>You do not have admin privileges.</Text>
       </View>
     );
   }
 
+  const BackButton = () => (
+    <TouchableOpacity onPress={() => router.back()} style={{ paddingLeft: 8, paddingRight: 16, paddingVertical: 8 }}>
+      <Text style={{ fontSize: 28, color: theme.accent, fontWeight: '600' }}>‹</Text>
+    </TouchableOpacity>
+  );
+
   return (
     <Stack
       screenOptions={{
-        headerStyle: { backgroundColor: '#0a0a0f' },
-        headerTintColor: '#fff',
+        headerStyle: { backgroundColor: theme.headerBg },
+        headerTintColor: theme.headerText,
         headerTitleStyle: { fontWeight: '700' },
-        contentStyle: { backgroundColor: '#0a0a0f' },
+        headerLeft: () => <BackButton />,
+        headerBackTitle: 'Back',
       }}
     >
       <Stack.Screen name="dashboard" options={{ title: 'Admin Dashboard' }} />
@@ -43,21 +53,6 @@ export default function AdminLayout() {
 }
 
 const styles = StyleSheet.create({
-  center: {
-    flex: 1,
-    backgroundColor: '#0a0a0f',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  denied: {
-    color: '#ff4d4d',
-    fontSize: 28,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  subtext: {
-    color: '#888',
-    fontSize: 16,
-  },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+  denied: { fontSize: 28, fontWeight: '700', marginBottom: 8 },
 });

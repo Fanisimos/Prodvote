@@ -1,12 +1,12 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { TouchableOpacity, Text } from 'react-native';
 import 'react-native-reanimated';
 
-import { useColorScheme } from '@/components/useColorScheme';
 import { AuthProvider, useAuthContext } from '../lib/AuthContext';
+import { ThemeProvider, useTheme } from '../lib/theme';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -32,14 +32,16 @@ export default function RootLayout() {
   if (!loaded) return null;
 
   return (
-    <AuthProvider>
-      <RootLayoutNav />
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <RootLayoutNav />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 
 function RootLayoutNav() {
-  const colorScheme = useColorScheme();
+  const { theme } = useTheme();
   const { session, loading } = useAuthContext();
   const segments = useSegments();
   const router = useRouter();
@@ -54,20 +56,65 @@ function RootLayoutNav() {
     }
   }, [session, loading, segments]);
 
-  const headerStyle = { backgroundColor: '#0a0a0f' };
+  const headerStyle = { backgroundColor: theme.headerBg };
+
+  const BackButton = () => (
+    <TouchableOpacity onPress={() => router.back()} style={{ paddingLeft: 8, paddingRight: 16, paddingVertical: 8 }}>
+      <Text style={{ fontSize: 28, color: theme.accent, fontWeight: '600' }}>‹</Text>
+    </TouchableOpacity>
+  );
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        <Stack.Screen name="(admin)" options={{ headerShown: false }} />
-        <Stack.Screen name="feature/[id]" options={{ title: 'Feature Details', headerBackTitle: 'Back', headerStyle, headerTintColor: '#fff' }} />
-        <Stack.Screen name="chat/[id]" options={{ title: 'Chat', headerBackTitle: 'Back', headerStyle, headerTintColor: '#fff' }} />
-        <Stack.Screen name="profile/[id]" options={{ title: 'Profile', headerBackTitle: 'Back', headerStyle, headerTintColor: '#fff' }} />
-        <Stack.Screen name="apps" options={{ headerShown: false }} />
-        <Stack.Screen name="paywall" options={{ presentation: 'modal', title: 'Choose Plan', headerStyle, headerTintColor: '#fff' }} />
-      </Stack>
-    </ThemeProvider>
+    <Stack>
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+      <Stack.Screen name="(admin)" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="feature/[id]"
+        options={{
+          title: 'Feature Details',
+          headerStyle,
+          headerTintColor: theme.headerText,
+          headerLeft: () => <BackButton />,
+        }}
+      />
+      <Stack.Screen
+        name="chat/[id]"
+        options={{
+          title: 'Chat',
+          headerStyle,
+          headerTintColor: theme.headerText,
+          headerLeft: () => <BackButton />,
+        }}
+      />
+      <Stack.Screen
+        name="profile/[id]"
+        options={{
+          title: 'Profile',
+          headerStyle,
+          headerTintColor: theme.headerText,
+          headerLeft: () => <BackButton />,
+        }}
+      />
+      <Stack.Screen name="apps" options={{ headerShown: false }} />
+      <Stack.Screen
+        name="paywall"
+        options={{
+          title: 'Choose Plan',
+          headerStyle,
+          headerTintColor: theme.headerText,
+          headerLeft: () => <BackButton />,
+        }}
+      />
+      <Stack.Screen
+        name="fortune-wheel"
+        options={{
+          title: 'Daily Reward',
+          headerStyle,
+          headerTintColor: theme.headerText,
+          headerLeft: () => <BackButton />,
+        }}
+      />
+    </Stack>
   );
 }

@@ -6,6 +6,7 @@ import {
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../lib/AuthContext';
 import { Feature, FeatureStatus } from '../../lib/types';
+import { useTheme, Theme } from '../../lib/theme';
 
 const STATUSES: FeatureStatus[] = ['open', 'under_review', 'planned', 'in_progress', 'shipped', 'declined'];
 
@@ -33,6 +34,7 @@ export default function AdminFeaturesScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [devResponseId, setDevResponseId] = useState<string | null>(null);
   const [devResponseText, setDevResponseText] = useState('');
+  const { theme } = useTheme();
 
   const fetchFeatures = useCallback(async () => {
     const { data } = await supabase
@@ -98,81 +100,83 @@ export default function AdminFeaturesScreen() {
     }
   };
 
+  const s = makeStyles(theme);
+
   const renderFeature = ({ item }: { item: Feature }) => (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
+    <View style={s.card}>
+      <View style={s.cardHeader}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.title} numberOfLines={2}>{item.title}</Text>
-          <Text style={styles.author}>by @{item.author_username || 'unknown'}</Text>
+          <Text style={s.title} numberOfLines={2}>{item.title}</Text>
+          <Text style={s.author}>by @{item.author_username || 'unknown'}</Text>
         </View>
-        <View style={styles.voteBox}>
-          <Text style={styles.voteCount}>{item.vote_count}</Text>
-          <Text style={styles.voteLabel}>votes</Text>
+        <View style={s.voteBox}>
+          <Text style={s.voteCount}>{item.vote_count}</Text>
+          <Text style={s.voteLabel}>votes</Text>
         </View>
       </View>
 
-      <View style={styles.row}>
-        <View style={[styles.statusBadge, { backgroundColor: STATUS_COLORS[item.status] + '22', borderColor: STATUS_COLORS[item.status] + '44' }]}>
-          <Text style={[styles.statusText, { color: STATUS_COLORS[item.status] }]}>
+      <View style={s.row}>
+        <View style={[s.statusBadge, { backgroundColor: STATUS_COLORS[item.status] + '22', borderColor: STATUS_COLORS[item.status] + '44' }]}>
+          <Text style={[s.statusText, { color: STATUS_COLORS[item.status] }]}>
             {STATUS_LABELS[item.status]}
           </Text>
         </View>
         {item.is_boosted && (
-          <View style={styles.boostedBadge}>
-            <Text style={styles.boostedText}>BOOSTED</Text>
+          <View style={s.boostedBadge}>
+            <Text style={s.boostedText}>BOOSTED</Text>
           </View>
         )}
       </View>
 
       {item.dev_response && (
-        <View style={styles.devResponseBox}>
-          <Text style={styles.devResponseLabel}>Dev Response:</Text>
-          <Text style={styles.devResponseText}>{item.dev_response}</Text>
+        <View style={s.devResponseBox}>
+          <Text style={s.devResponseLabel}>Dev Response:</Text>
+          <Text style={s.devResponseText}>{item.dev_response}</Text>
         </View>
       )}
 
       {devResponseId === item.id && (
-        <View style={styles.devInputBox}>
+        <View style={s.devInputBox}>
           <TextInput
-            style={styles.devInput}
+            style={s.devInput}
             value={devResponseText}
             onChangeText={setDevResponseText}
             placeholder="Type dev response..."
-            placeholderTextColor="#666"
+            placeholderTextColor={theme.textMuted}
             multiline
           />
-          <View style={styles.devInputActions}>
+          <View style={s.devInputActions}>
             <TouchableOpacity
-              style={styles.cancelBtn}
+              style={s.cancelBtn}
               onPress={() => { setDevResponseId(null); setDevResponseText(''); }}
             >
-              <Text style={styles.cancelBtnText}>Cancel</Text>
+              <Text style={s.cancelBtnText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.submitBtn}
+              style={s.submitBtn}
               onPress={() => submitDevResponse(item.id)}
             >
-              <Text style={styles.submitBtnText}>Save</Text>
+              <Text style={s.submitBtnText}>Save</Text>
             </TouchableOpacity>
           </View>
         </View>
       )}
 
-      <View style={styles.cardActions}>
+      <View style={s.cardActions}>
         <TouchableOpacity
-          style={[styles.actionBtn, styles.statusBtn]}
+          style={[s.actionBtn, s.statusBtn]}
           onPress={() => changeStatus(item)}
         >
-          <Text style={styles.actionBtnText}>Change Status</Text>
+          <Text style={s.actionBtnText}>Change Status</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.actionBtn, styles.responseBtn]}
+          style={[s.actionBtn, s.responseBtn]}
           onPress={() => {
             setDevResponseId(item.id);
             setDevResponseText(item.dev_response || '');
           }}
         >
-          <Text style={styles.actionBtnText}>Dev Response</Text>
+          <Text style={s.actionBtnText}>Dev Response</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -180,45 +184,45 @@ export default function AdminFeaturesScreen() {
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#7c5cfc" />
+      <View style={s.center}>
+        <ActivityIndicator size="large" color={theme.accent} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.countText}>{features.length} features</Text>
+    <View style={s.container}>
+      <Text style={s.countText}>{features.length} features</Text>
       <FlatList
         data={features}
         keyExtractor={(item) => item.id}
         renderItem={renderFeature}
-        contentContainerStyle={styles.list}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#7c5cfc" />}
+        contentContainerStyle={s.list}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.accent} />}
       />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0f' },
-  center: { flex: 1, backgroundColor: '#0a0a0f', justifyContent: 'center', alignItems: 'center' },
+const makeStyles = (t: Theme) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: t.bg },
+  center: { flex: 1, backgroundColor: t.bg, justifyContent: 'center', alignItems: 'center' },
   list: { padding: 16, paddingBottom: 40 },
-  countText: { color: '#888', fontSize: 13, paddingHorizontal: 16, paddingTop: 12 },
+  countText: { color: t.textMuted, fontSize: 13, paddingHorizontal: 16, paddingTop: 12 },
   card: {
-    backgroundColor: '#1a1a2e',
+    backgroundColor: t.card,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#2a2a3e',
+    borderColor: t.cardBorder,
     padding: 16,
     marginBottom: 12,
   },
   cardHeader: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 10 },
-  title: { color: '#fff', fontSize: 16, fontWeight: '700', marginBottom: 4 },
-  author: { color: '#888', fontSize: 13 },
+  title: { color: t.text, fontSize: 16, fontWeight: '700', marginBottom: 4 },
+  author: { color: t.textMuted, fontSize: 13 },
   voteBox: { alignItems: 'center', marginLeft: 12 },
-  voteCount: { color: '#7c5cfc', fontSize: 22, fontWeight: '800' },
-  voteLabel: { color: '#888', fontSize: 11 },
+  voteCount: { color: t.accent, fontSize: 22, fontWeight: '800' },
+  voteLabel: { color: t.textMuted, fontSize: 11 },
   row: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginBottom: 10 },
   statusBadge: {
     borderWidth: 1,
@@ -237,20 +241,20 @@ const styles = StyleSheet.create({
   },
   boostedText: { color: '#ff9800', fontSize: 12, fontWeight: '700' },
   devResponseBox: {
-    backgroundColor: '#0a0a0f',
+    backgroundColor: t.bg,
     borderRadius: 8,
     padding: 12,
     marginBottom: 10,
   },
-  devResponseLabel: { color: '#7c5cfc', fontSize: 12, fontWeight: '700', marginBottom: 4 },
-  devResponseText: { color: '#ccc', fontSize: 13, lineHeight: 18 },
+  devResponseLabel: { color: t.accent, fontSize: 12, fontWeight: '700', marginBottom: 4 },
+  devResponseText: { color: t.textSecondary, fontSize: 13, lineHeight: 18 },
   devInputBox: { marginBottom: 10 },
   devInput: {
-    backgroundColor: '#0a0a0f',
+    backgroundColor: t.bg,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#2a2a3e',
-    color: '#fff',
+    borderColor: t.cardBorder,
+    color: t.text,
     padding: 12,
     fontSize: 14,
     minHeight: 80,
@@ -258,14 +262,14 @@ const styles = StyleSheet.create({
   },
   devInputActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 8 },
   cancelBtn: {
-    backgroundColor: '#2a2a3e',
+    backgroundColor: t.cardBorder,
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
-  cancelBtnText: { color: '#888', fontSize: 14, fontWeight: '600' },
+  cancelBtnText: { color: t.textMuted, fontSize: 14, fontWeight: '600' },
   submitBtn: {
-    backgroundColor: '#7c5cfc',
+    backgroundColor: t.accent,
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -278,7 +282,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     alignItems: 'center',
   },
-  statusBtn: { backgroundColor: '#7c5cfc22', borderWidth: 1, borderColor: '#7c5cfc44' },
+  statusBtn: { backgroundColor: t.accent + '22', borderWidth: 1, borderColor: t.accent + '44' },
   responseBtn: { backgroundColor: '#4da6ff22', borderWidth: 1, borderColor: '#4da6ff44' },
-  actionBtnText: { color: '#fff', fontSize: 14, fontWeight: '600' },
+  actionBtnText: { color: t.text, fontSize: 14, fontWeight: '600' },
 });

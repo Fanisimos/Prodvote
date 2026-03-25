@@ -1,12 +1,26 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { Profile } from '../lib/types';
 import { Session } from '@supabase/supabase-js';
+import { initRevenueCat } from '../lib/revenue';
 
 export function useAuth() {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const revenueCatInitialized = useRef(false);
+
+  const initRC = useCallback(async (userId: string) => {
+    if (revenueCatInitialized.current) return;
+    if (Platform.OS === 'web') return;
+    try {
+      await initRevenueCat(userId);
+      revenueCatInitialized.current = true;
+    } catch (e) {
+      console.warn('RevenueCat init failed:', e);
+    }
+  }, []);
 
   const fetchProfile = useCallback(async (userId?: string) => {
     const uid = userId || session?.user?.id;
@@ -27,14 +41,20 @@ export function useAuth() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      if (session) fetchProfile(session.user.id);
-      else setLoading(false);
+      if (session) {
+        fetchProfile(session.user.id);
+        initRC(session.user.id);
+      } else {
+        setLoading(false);
+      }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      if (session) fetchProfile(session.user.id);
-      else {
+      if (session) {
+        fetchProfile(session.user.id);
+        initRC(session.user.id);
+      } else {
         setProfile(null);
         setLoading(false);
       }

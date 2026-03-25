@@ -5,6 +5,7 @@ import {
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../lib/AuthContext';
 import { Profile, Tier } from '../../lib/types';
+import { useTheme, Theme } from '../../lib/theme';
 
 interface TierStats {
   tier: Tier;
@@ -26,6 +27,7 @@ export default function AdminSubscriptionsScreen() {
   const [totalUsers, setTotalUsers] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const { theme } = useTheme();
 
   const fetchStats = useCallback(async () => {
     const { data } = await supabase
@@ -64,59 +66,58 @@ export default function AdminSubscriptionsScreen() {
   const paidUsers = tierStats.reduce((sum, s) => sum + (s.tier !== 'free' ? s.count : 0), 0);
   const conversionRate = totalUsers > 0 ? Math.round((paidUsers / totalUsers) * 100) : 0;
 
+  const s = makeStyles(theme);
+
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#7c5cfc" />
+      <View style={s.center}>
+        <ActivityIndicator size="large" color={theme.accent} />
       </View>
     );
   }
 
   return (
     <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#7c5cfc" />}
+      style={s.container}
+      contentContainerStyle={s.content}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.accent} />}
     >
-      <Text style={styles.heading}>Subscription Overview</Text>
+      <Text style={s.heading}>Subscription Overview</Text>
 
-      {/* Summary cards */}
-      <View style={styles.summaryRow}>
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryValue}>{totalUsers}</Text>
-          <Text style={styles.summaryLabel}>Total Users</Text>
+      <View style={s.summaryRow}>
+        <View style={s.summaryCard}>
+          <Text style={s.summaryValue}>{totalUsers}</Text>
+          <Text style={s.summaryLabel}>Total Users</Text>
         </View>
-        <View style={styles.summaryCard}>
-          <Text style={[styles.summaryValue, { color: '#4caf50' }]}>{paidUsers}</Text>
-          <Text style={styles.summaryLabel}>Paid Users</Text>
+        <View style={s.summaryCard}>
+          <Text style={[s.summaryValue, { color: '#4caf50' }]}>{paidUsers}</Text>
+          <Text style={s.summaryLabel}>Paid Users</Text>
         </View>
-        <View style={styles.summaryCard}>
-          <Text style={[styles.summaryValue, { color: '#7c5cfc' }]}>{conversionRate}%</Text>
-          <Text style={styles.summaryLabel}>Conversion</Text>
+        <View style={s.summaryCard}>
+          <Text style={[s.summaryValue, { color: theme.accent }]}>{conversionRate}%</Text>
+          <Text style={s.summaryLabel}>Conversion</Text>
         </View>
       </View>
 
-      {/* Tier breakdown */}
-      <Text style={styles.heading}>Tier Breakdown</Text>
+      <Text style={s.heading}>Tier Breakdown</Text>
 
       {tierStats.map((stat) => (
-        <View key={stat.tier} style={styles.tierCard}>
-          <View style={styles.tierHeader}>
-            <Text style={styles.tierIcon}>{stat.icon}</Text>
+        <View key={stat.tier} style={s.tierCard}>
+          <View style={s.tierHeader}>
+            <Text style={s.tierIcon}>{stat.icon}</Text>
             <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={styles.tierName}>{TIER_CONFIG[stat.tier].label}</Text>
-              <Text style={styles.tierCount}>{stat.count} users</Text>
+              <Text style={s.tierName}>{TIER_CONFIG[stat.tier].label}</Text>
+              <Text style={s.tierCount}>{stat.count} users</Text>
             </View>
-            <Text style={[styles.tierPercentage, { color: stat.color }]}>
+            <Text style={[s.tierPercentage, { color: stat.color }]}>
               {stat.percentage}%
             </Text>
           </View>
 
-          {/* Progress bar */}
-          <View style={styles.barBg}>
+          <View style={s.barBg}>
             <View
               style={[
-                styles.barFill,
+                s.barFill,
                 { width: `${stat.percentage}%` as any, backgroundColor: stat.color },
               ]}
             />
@@ -124,16 +125,15 @@ export default function AdminSubscriptionsScreen() {
         </View>
       ))}
 
-      {/* Distribution visual */}
-      <Text style={styles.heading}>Distribution</Text>
-      <View style={styles.distCard}>
-        <View style={styles.distBar}>
+      <Text style={s.heading}>Distribution</Text>
+      <View style={s.distCard}>
+        <View style={s.distBar}>
           {tierStats.map((stat) => (
             stat.percentage > 0 ? (
               <View
                 key={stat.tier}
                 style={[
-                  styles.distSegment,
+                  s.distSegment,
                   {
                     flex: stat.count,
                     backgroundColor: stat.color,
@@ -143,11 +143,11 @@ export default function AdminSubscriptionsScreen() {
             ) : null
           ))}
         </View>
-        <View style={styles.distLegend}>
+        <View style={s.distLegend}>
           {tierStats.map((stat) => (
-            <View key={stat.tier} style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: stat.color }]} />
-              <Text style={styles.legendText}>
+            <View key={stat.tier} style={s.legendItem}>
+              <View style={[s.legendDot, { backgroundColor: stat.color }]} />
+              <Text style={s.legendText}>
                 {TIER_CONFIG[stat.tier].label} ({stat.percentage}%)
               </Text>
             </View>
@@ -158,38 +158,38 @@ export default function AdminSubscriptionsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0f' },
+const makeStyles = (t: Theme) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: t.bg },
   content: { padding: 16, paddingBottom: 40 },
-  center: { flex: 1, backgroundColor: '#0a0a0f', justifyContent: 'center', alignItems: 'center' },
-  heading: { color: '#fff', fontSize: 20, fontWeight: '700', marginBottom: 16, marginTop: 8 },
+  center: { flex: 1, backgroundColor: t.bg, justifyContent: 'center', alignItems: 'center' },
+  heading: { color: t.text, fontSize: 20, fontWeight: '700', marginBottom: 16, marginTop: 8 },
   summaryRow: { flexDirection: 'row', gap: 10, marginBottom: 24 },
   summaryCard: {
     flex: 1,
-    backgroundColor: '#1a1a2e',
+    backgroundColor: t.card,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#2a2a3e',
+    borderColor: t.cardBorder,
     padding: 16,
     alignItems: 'center',
   },
-  summaryValue: { color: '#fff', fontSize: 24, fontWeight: '800', marginBottom: 4 },
-  summaryLabel: { color: '#888', fontSize: 12, fontWeight: '500' },
+  summaryValue: { color: t.text, fontSize: 24, fontWeight: '800', marginBottom: 4 },
+  summaryLabel: { color: t.textMuted, fontSize: 12, fontWeight: '500' },
   tierCard: {
-    backgroundColor: '#1a1a2e',
+    backgroundColor: t.card,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#2a2a3e',
+    borderColor: t.cardBorder,
     padding: 16,
     marginBottom: 12,
   },
   tierHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   tierIcon: { fontSize: 28 },
-  tierName: { color: '#fff', fontSize: 17, fontWeight: '700' },
-  tierCount: { color: '#888', fontSize: 13 },
+  tierName: { color: t.text, fontSize: 17, fontWeight: '700' },
+  tierCount: { color: t.textMuted, fontSize: 13 },
   tierPercentage: { fontSize: 22, fontWeight: '800' },
   barBg: {
-    backgroundColor: '#0a0a0f',
+    backgroundColor: t.bg,
     borderRadius: 6,
     height: 10,
     overflow: 'hidden',
@@ -199,10 +199,10 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   distCard: {
-    backgroundColor: '#1a1a2e',
+    backgroundColor: t.card,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#2a2a3e',
+    borderColor: t.cardBorder,
     padding: 16,
   },
   distBar: {
@@ -218,5 +218,5 @@ const styles = StyleSheet.create({
   distLegend: { flexDirection: 'row', justifyContent: 'space-around' },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   legendDot: { width: 10, height: 10, borderRadius: 5 },
-  legendText: { color: '#888', fontSize: 13 },
+  legendText: { color: t.textMuted, fontSize: 13 },
 });

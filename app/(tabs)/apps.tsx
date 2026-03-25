@@ -1,86 +1,96 @@
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image } from 'react-native';
 import { router } from 'expo-router';
+import { useTheme, Theme } from '../../lib/theme';
 
-const APPS = [
-  { id: 'journal', name: 'Journal', emoji: '📓', color: '#7c5cfc', desc: 'Daily reflections' },
-  { id: 'habits', name: 'Habits', emoji: '✅', color: '#34d399', desc: 'Track daily habits' },
-  { id: 'pomodoro', name: 'Pomodoro', emoji: '🍅', color: '#ff4d6a', desc: '25/5 focus timer' },
-  { id: 'eisenhower', name: 'Eisenhower', emoji: '📊', color: '#ffb347', desc: 'Priority matrix' },
-  { id: 'kanban', name: 'Kanban', emoji: '📋', color: '#4dc9f6', desc: 'Task boards' },
-  { id: 'notes', name: 'Notes', emoji: '📝', color: '#f472b6', desc: 'Quick notes' },
-  { id: 'plans', name: 'Plans', emoji: '🎯', color: '#fbbf24', desc: 'Goals & plans' },
-  { id: 'whiteboard', name: 'Whiteboard', emoji: '🎨', color: '#8b5cf6', desc: 'Draw & sketch' },
-  { id: 'breathe', name: 'Breathe', emoji: '🫁', color: '#34d399', desc: 'Breathing exercises' },
-  { id: 'hiit', name: 'HIIT', emoji: '🏋️', color: '#ff6b35', desc: 'Interval training' },
-  { id: 'moon-patrol', name: 'Moon Patrol', emoji: '🚀', color: '#6366f1', desc: 'Space game' },
+const PRODUCTIVITY = [
+  { id: 'eisenhower', name: 'Eisenhower Matrix', emoji: '📋', desc: 'Prioritise tasks by urgency and importance across 4 quadrants' },
+  { id: 'pomodoro', name: 'Pomodoro Timer', emoji: '⏱️', desc: 'Focus in 25-minute sprints with breaks to stay productive' },
+  { id: 'habits', name: 'Habit Tracker', emoji: '🔥', desc: 'Build streaks and track daily habits with visual progress' },
+  { id: 'notes', name: 'Quick Notes', emoji: '📝', desc: 'Capture ideas and thoughts on the go' },
+  { id: 'kanban', name: 'Kanban Board', emoji: '📊', desc: 'Manage projects with To Do, In Progress, and Done columns' },
+  { id: 'journal', name: 'Daily Journal', emoji: '📓', desc: 'Reflect on your day with prompts and mood tracking' },
+  { id: 'plans', name: 'Plans', emoji: '🎯', desc: 'Set goals and track progress towards your targets' },
+  { id: 'whiteboard', name: 'Whiteboard', emoji: '🎨', desc: 'Freehand drawing canvas — sketch ideas, mind-map, doodle' },
+  { id: 'breathe', name: 'Breathe', emoji: '🫁', desc: 'Guided breathing exercises — box 4-7-8, calm & more' },
+  { id: 'hiit', name: 'HIIT Timer', emoji: '🔥', desc: 'Interval workout timer with presets and custom builder' },
+];
+
+const GAMES = [
+  { id: 'moon-patrol', name: 'Moon Patrol: Dark Frontier', emoji: '🚀', desc: 'Retro arcade shooter — dodge obstacles and blast aliens' },
 ];
 
 export default function AppsScreen() {
+  const { theme } = useTheme();
+  const s = styles(theme);
+
+  function renderApp(app: typeof PRODUCTIVITY[0]) {
+    return (
+      <TouchableOpacity
+        key={app.id}
+        style={s.appRow}
+        onPress={() => router.push(`/apps/${app.id}` as any)}
+        activeOpacity={0.7}
+      >
+        <View style={s.emojiContainer}>
+          <Text style={{ fontSize: 28 }}>{app.emoji}</Text>
+        </View>
+        <View style={s.appInfo}>
+          <Text style={s.appName}>{app.name}</Text>
+          <Text style={s.appDesc} numberOfLines={2}>{app.desc}</Text>
+        </View>
+        <Text style={s.chevron}>›</Text>
+      </TouchableOpacity>
+    );
+  }
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.sectionTitle}>Productivity</Text>
-      <View style={styles.grid}>
-        {APPS.slice(0, 7).map((app) => (
-          <TouchableOpacity
-            key={app.id}
-            style={styles.appCard}
-            onPress={() => router.push(`/apps/${app.id}` as any)}
-          >
-            <View style={[styles.appIcon, { backgroundColor: app.color + '22' }]}>
-              <Text style={{ fontSize: 28 }}>{app.emoji}</Text>
-            </View>
-            <Text style={styles.appName}>{app.name}</Text>
-            <Text style={styles.appDesc}>{app.desc}</Text>
-          </TouchableOpacity>
-        ))}
+    <ScrollView style={s.container} contentContainerStyle={s.content}>
+      <Image
+        source={require('../../assets/images/logo-watermark.png')}
+        style={s.watermark}
+        tintColor={theme.watermarkTint}
+        resizeMode="contain"
+      />
+
+      <Text style={s.heading}>Apps</Text>
+
+      {PRODUCTIVITY.map(renderApp)}
+
+      <View style={s.sectionHeader}>
+        <Text style={s.sectionTitle}>GAMES</Text>
+        <Text style={s.sectionCount}>{GAMES.length} game</Text>
       </View>
 
-      <Text style={styles.sectionTitle}>Wellness & Fun</Text>
-      <View style={styles.grid}>
-        {APPS.slice(7).map((app) => (
-          <TouchableOpacity
-            key={app.id}
-            style={styles.appCard}
-            onPress={() => router.push(`/apps/${app.id}` as any)}
-          >
-            <View style={[styles.appIcon, { backgroundColor: app.color + '22' }]}>
-              <Text style={{ fontSize: 28 }}>{app.emoji}</Text>
-            </View>
-            <Text style={styles.appName}>{app.name}</Text>
-            <Text style={styles.appDesc}>{app.desc}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      {GAMES.map(renderApp)}
     </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0f' },
-  content: { padding: 16, paddingBottom: 40 },
-  sectionTitle: { fontSize: 20, fontWeight: '800', color: '#fff', marginBottom: 16, marginTop: 8 },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 24,
+const styles = (t: Theme) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: t.bg },
+  content: { paddingBottom: 40 },
+  watermark: {
+    position: 'absolute', width: 600, height: 600, opacity: 0.05,
+    top: '15%', left: '50%', marginLeft: -300, zIndex: -1,
   },
-  appCard: {
-    width: '47%',
-    backgroundColor: '#1a1a2e',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#2a2a3e',
+  heading: { fontSize: 28, fontWeight: '800', color: t.text, padding: 16, paddingBottom: 8 },
+  appRow: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: t.card,
+    marginHorizontal: 16, marginBottom: 10, borderRadius: 14,
+    padding: 16, borderWidth: 1, borderColor: t.cardBorder,
   },
-  appIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
+  emojiContainer: {
+    width: 48, height: 48, borderRadius: 14, backgroundColor: t.surface,
+    alignItems: 'center', justifyContent: 'center',
   },
-  appName: { fontSize: 15, fontWeight: '700', color: '#fff' },
-  appDesc: { fontSize: 12, color: '#888', marginTop: 3 },
+  appInfo: { flex: 1, marginLeft: 14 },
+  appName: { fontSize: 16, fontWeight: '700', color: t.text },
+  appDesc: { fontSize: 13, color: t.textSecondary, marginTop: 3, lineHeight: 18 },
+  chevron: { fontSize: 24, color: t.textMuted, marginLeft: 8 },
+  sectionHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 16, paddingTop: 20, paddingBottom: 10,
+  },
+  sectionTitle: { fontSize: 14, fontWeight: '800', color: t.text, letterSpacing: 1 },
+  sectionCount: { fontSize: 13, color: t.textMuted },
 });

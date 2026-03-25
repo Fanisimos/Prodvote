@@ -7,6 +7,7 @@ import {
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../lib/AuthContext';
 import { Channel } from '../../lib/types';
+import { useTheme, Theme } from '../../lib/theme';
 
 export default function AdminChannelsScreen() {
   const [channels, setChannels] = useState<Channel[]>([]);
@@ -16,6 +17,7 @@ export default function AdminChannelsScreen() {
   const [formName, setFormName] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const { theme } = useTheme();
 
   const fetchChannels = useCallback(async () => {
     const { data } = await supabase
@@ -96,31 +98,33 @@ export default function AdminChannelsScreen() {
     );
   };
 
+  const s = makeStyles(theme);
+
   const renderChannel = ({ item }: { item: Channel }) => (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <View style={styles.hashCircle}>
-          <Text style={styles.hash}>#</Text>
+    <View style={s.card}>
+      <View style={s.cardHeader}>
+        <View style={s.hashCircle}>
+          <Text style={s.hash}>#</Text>
         </View>
         <View style={{ flex: 1, marginLeft: 12 }}>
-          <View style={styles.nameRow}>
-            <Text style={styles.channelName}>{item.name}</Text>
+          <View style={s.nameRow}>
+            <Text style={s.channelName}>{item.name}</Text>
             {item.is_locked && (
-              <View style={styles.defaultBadge}>
-                <Text style={styles.defaultText}>DEFAULT</Text>
+              <View style={s.defaultBadge}>
+                <Text style={s.defaultText}>DEFAULT</Text>
               </View>
             )}
           </View>
           {item.description && (
-            <Text style={styles.channelDesc} numberOfLines={2}>{item.description}</Text>
+            <Text style={s.channelDesc} numberOfLines={2}>{item.description}</Text>
           )}
-          <Text style={styles.dateText}>
+          <Text style={s.dateText}>
             Created {new Date(item.created_at).toLocaleDateString()}
           </Text>
         </View>
         {!item.is_locked && (
-          <TouchableOpacity style={styles.deleteBtn} onPress={() => deleteChannel(item)}>
-            <Text style={styles.deleteBtnText}>Delete</Text>
+          <TouchableOpacity style={s.deleteBtn} onPress={() => deleteChannel(item)}>
+            <Text style={s.deleteBtnText}>Delete</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -129,54 +133,54 @@ export default function AdminChannelsScreen() {
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#7c5cfc" />
+      <View style={s.center}>
+        <ActivityIndicator size="large" color={theme.accent} />
       </View>
     );
   }
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={s.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       {showForm && (
-        <View style={styles.formContainer}>
-          <Text style={styles.formTitle}>Create New Channel</Text>
+        <View style={s.formContainer}>
+          <Text style={s.formTitle}>Create New Channel</Text>
 
-          <Text style={styles.label}>Name</Text>
+          <Text style={s.label}>Name</Text>
           <TextInput
-            style={styles.input}
+            style={s.input}
             value={formName}
             onChangeText={setFormName}
             placeholder="channel-name"
-            placeholderTextColor="#666"
+            placeholderTextColor={theme.textMuted}
             autoCapitalize="none"
           />
 
-          <Text style={styles.label}>Description</Text>
+          <Text style={s.label}>Description</Text>
           <TextInput
-            style={[styles.input, { minHeight: 60 }]}
+            style={[s.input, { minHeight: 60 }]}
             value={formDescription}
             onChangeText={setFormDescription}
             placeholder="Optional description"
-            placeholderTextColor="#666"
+            placeholderTextColor={theme.textMuted}
             multiline
           />
 
-          <View style={styles.formActions}>
-            <TouchableOpacity style={styles.cancelFormBtn} onPress={resetForm}>
-              <Text style={styles.cancelFormText}>Cancel</Text>
+          <View style={s.formActions}>
+            <TouchableOpacity style={s.cancelFormBtn} onPress={resetForm}>
+              <Text style={s.cancelFormText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.createBtn, submitting && { opacity: 0.6 }]}
+              style={[s.createBtn, submitting && { opacity: 0.6 }]}
               onPress={createChannel}
               disabled={submitting}
             >
               {submitting ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Text style={styles.createBtnText}>Create Channel</Text>
+                <Text style={s.createBtnText}>Create Channel</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -184,34 +188,34 @@ export default function AdminChannelsScreen() {
       )}
 
       {!showForm && (
-        <TouchableOpacity style={styles.addBtn} onPress={() => setShowForm(true)}>
-          <Text style={styles.addBtnText}>+ New Channel</Text>
+        <TouchableOpacity style={s.addBtn} onPress={() => setShowForm(true)}>
+          <Text style={s.addBtnText}>+ New Channel</Text>
         </TouchableOpacity>
       )}
 
-      <Text style={styles.countText}>{channels.length} channels</Text>
+      <Text style={s.countText}>{channels.length} channels</Text>
 
       <FlatList
         data={channels}
         keyExtractor={(item) => item.id}
         renderItem={renderChannel}
-        contentContainerStyle={styles.list}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#7c5cfc" />}
+        contentContainerStyle={s.list}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.accent} />}
       />
     </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0f' },
-  center: { flex: 1, backgroundColor: '#0a0a0f', justifyContent: 'center', alignItems: 'center' },
+const makeStyles = (t: Theme) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: t.bg },
+  center: { flex: 1, backgroundColor: t.bg, justifyContent: 'center', alignItems: 'center' },
   list: { padding: 16, paddingBottom: 40 },
-  countText: { color: '#888', fontSize: 13, paddingHorizontal: 16, paddingTop: 4 },
+  countText: { color: t.textMuted, fontSize: 13, paddingHorizontal: 16, paddingTop: 4 },
   card: {
-    backgroundColor: '#1a1a2e',
+    backgroundColor: t.card,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#2a2a3e',
+    borderColor: t.cardBorder,
     padding: 16,
     marginBottom: 12,
   },
@@ -220,13 +224,13 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#7c5cfc22',
+    backgroundColor: t.accent + '22',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  hash: { color: '#7c5cfc', fontSize: 22, fontWeight: '700' },
+  hash: { color: t.accent, fontSize: 22, fontWeight: '700' },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 },
-  channelName: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  channelName: { color: t.text, fontSize: 16, fontWeight: '700' },
   defaultBadge: {
     backgroundColor: '#4caf5022',
     borderRadius: 4,
@@ -234,8 +238,8 @@ const styles = StyleSheet.create({
     paddingVertical: 1,
   },
   defaultText: { color: '#4caf50', fontSize: 10, fontWeight: '700' },
-  channelDesc: { color: '#888', fontSize: 13, marginBottom: 4 },
-  dateText: { color: '#555', fontSize: 12 },
+  channelDesc: { color: t.textMuted, fontSize: 13, marginBottom: 4 },
+  dateText: { color: t.textMuted, fontSize: 12 },
   deleteBtn: {
     backgroundColor: '#ff4d4d22',
     borderWidth: 1,
@@ -246,7 +250,7 @@ const styles = StyleSheet.create({
   },
   deleteBtnText: { color: '#ff4d4d', fontSize: 13, fontWeight: '600' },
   addBtn: {
-    backgroundColor: '#7c5cfc',
+    backgroundColor: t.accent,
     borderRadius: 12,
     margin: 16,
     marginBottom: 8,
@@ -255,34 +259,34 @@ const styles = StyleSheet.create({
   },
   addBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   formContainer: {
-    backgroundColor: '#1a1a2e',
+    backgroundColor: t.card,
     borderBottomWidth: 1,
-    borderBottomColor: '#2a2a3e',
+    borderBottomColor: t.cardBorder,
     padding: 16,
   },
-  formTitle: { color: '#fff', fontSize: 18, fontWeight: '700', marginBottom: 16 },
-  label: { color: '#888', fontSize: 13, fontWeight: '600', marginBottom: 6, marginTop: 8 },
+  formTitle: { color: t.text, fontSize: 18, fontWeight: '700', marginBottom: 16 },
+  label: { color: t.textMuted, fontSize: 13, fontWeight: '600', marginBottom: 6, marginTop: 8 },
   input: {
-    backgroundColor: '#0a0a0f',
+    backgroundColor: t.bg,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#2a2a3e',
-    color: '#fff',
+    borderColor: t.cardBorder,
+    color: t.text,
     padding: 12,
     fontSize: 15,
   },
   formActions: { flexDirection: 'row', gap: 8, marginTop: 16 },
   cancelFormBtn: {
     flex: 1,
-    backgroundColor: '#2a2a3e',
+    backgroundColor: t.cardBorder,
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: 'center',
   },
-  cancelFormText: { color: '#888', fontSize: 15, fontWeight: '600' },
+  cancelFormText: { color: t.textMuted, fontSize: 15, fontWeight: '600' },
   createBtn: {
     flex: 1,
-    backgroundColor: '#7c5cfc',
+    backgroundColor: t.accent,
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: 'center',

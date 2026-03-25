@@ -7,6 +7,7 @@ import {
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../lib/AuthContext';
 import { Badge } from '../../lib/types';
+import { useTheme, Theme } from '../../lib/theme';
 
 export default function AdminBadgesScreen() {
   const [badges, setBadges] = useState<Badge[]>([]);
@@ -19,6 +20,7 @@ export default function AdminBadgesScreen() {
   const [formCost, setFormCost] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const { theme } = useTheme();
 
   const fetchBadges = useCallback(async () => {
     const { data } = await supabase
@@ -100,28 +102,30 @@ export default function AdminBadgesScreen() {
     );
   };
 
+  const s = makeStyles(theme);
+
   const renderBadge = ({ item }: { item: Badge }) => (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <View style={[styles.emojiCircle, { backgroundColor: item.color + '22' }]}>
-          <Text style={styles.emoji}>{item.emoji}</Text>
+    <View style={s.card}>
+      <View style={s.cardHeader}>
+        <View style={[s.emojiCircle, { backgroundColor: item.color + '22' }]}>
+          <Text style={s.emoji}>{item.emoji}</Text>
         </View>
         <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={styles.badgeName}>{item.name}</Text>
+          <Text style={s.badgeName}>{item.name}</Text>
           {item.description && (
-            <Text style={styles.badgeDesc} numberOfLines={2}>{item.description}</Text>
+            <Text style={s.badgeDesc} numberOfLines={2}>{item.description}</Text>
           )}
-          <View style={styles.row}>
-            <Text style={styles.costText}>{item.price} coins</Text>
+          <View style={s.row}>
+            <Text style={s.costText}>{item.price} coins</Text>
             {item.is_premium && (
-              <View style={styles.premiumBadge}>
-                <Text style={styles.premiumText}>PREMIUM</Text>
+              <View style={s.premiumBadge}>
+                <Text style={s.premiumText}>PREMIUM</Text>
               </View>
             )}
           </View>
         </View>
-        <TouchableOpacity style={styles.deleteBtn} onPress={() => deleteBadge(item)}>
-          <Text style={styles.deleteBtnText}>Delete</Text>
+        <TouchableOpacity style={s.deleteBtn} onPress={() => deleteBadge(item)}>
+          <Text style={s.deleteBtnText}>Delete</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -129,81 +133,81 @@ export default function AdminBadgesScreen() {
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#7c5cfc" />
+      <View style={s.center}>
+        <ActivityIndicator size="large" color={theme.accent} />
       </View>
     );
   }
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={s.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       {showForm && (
-        <ScrollView style={styles.formContainer} keyboardShouldPersistTaps="handled">
-          <Text style={styles.formTitle}>Create New Badge</Text>
+        <ScrollView style={s.formContainer} keyboardShouldPersistTaps="handled">
+          <Text style={s.formTitle}>Create New Badge</Text>
 
-          <Text style={styles.label}>Name</Text>
+          <Text style={s.label}>Name</Text>
           <TextInput
-            style={styles.input}
+            style={s.input}
             value={formName}
             onChangeText={setFormName}
             placeholder="Badge name"
-            placeholderTextColor="#666"
+            placeholderTextColor={theme.textMuted}
           />
 
-          <Text style={styles.label}>Emoji</Text>
+          <Text style={s.label}>Emoji</Text>
           <TextInput
-            style={styles.input}
+            style={s.input}
             value={formEmoji}
             onChangeText={setFormEmoji}
             placeholder="e.g. 🏆"
-            placeholderTextColor="#666"
+            placeholderTextColor={theme.textMuted}
           />
 
-          <Text style={styles.label}>Color (hex)</Text>
+          <Text style={s.label}>Color (hex)</Text>
           <TextInput
-            style={styles.input}
+            style={s.input}
             value={formColor}
             onChangeText={setFormColor}
             placeholder="#7c5cfc"
-            placeholderTextColor="#666"
+            placeholderTextColor={theme.textMuted}
           />
 
-          <Text style={styles.label}>Coin Cost</Text>
+          <Text style={s.label}>Coin Cost</Text>
           <TextInput
-            style={styles.input}
+            style={s.input}
             value={formCost}
             onChangeText={setFormCost}
             placeholder="0"
-            placeholderTextColor="#666"
+            placeholderTextColor={theme.textMuted}
             keyboardType="number-pad"
           />
 
-          <Text style={styles.label}>Description</Text>
+          <Text style={s.label}>Description</Text>
           <TextInput
-            style={[styles.input, { minHeight: 60 }]}
+            style={[s.input, { minHeight: 60 }]}
             value={formDescription}
             onChangeText={setFormDescription}
             placeholder="Optional description"
-            placeholderTextColor="#666"
+            placeholderTextColor={theme.textMuted}
             multiline
           />
 
-          <View style={styles.formActions}>
-            <TouchableOpacity style={styles.cancelFormBtn} onPress={resetForm}>
-              <Text style={styles.cancelFormText}>Cancel</Text>
+          <View style={s.formActions}>
+            <TouchableOpacity style={s.cancelFormBtn} onPress={resetForm}>
+              <Text style={s.cancelFormText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.createBtn, submitting && { opacity: 0.6 }]}
+              style={[s.createBtn, submitting && { opacity: 0.6 }]}
               onPress={createBadge}
               disabled={submitting}
             >
               {submitting ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Text style={styles.createBtnText}>Create Badge</Text>
+                <Text style={s.createBtnText}>Create Badge</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -211,34 +215,34 @@ export default function AdminBadgesScreen() {
       )}
 
       {!showForm && (
-        <TouchableOpacity style={styles.addBtn} onPress={() => setShowForm(true)}>
-          <Text style={styles.addBtnText}>+ New Badge</Text>
+        <TouchableOpacity style={s.addBtn} onPress={() => setShowForm(true)}>
+          <Text style={s.addBtnText}>+ New Badge</Text>
         </TouchableOpacity>
       )}
 
-      <Text style={styles.countText}>{badges.length} badges</Text>
+      <Text style={s.countText}>{badges.length} badges</Text>
 
       <FlatList
         data={badges}
         keyExtractor={(item) => String(item.id)}
         renderItem={renderBadge}
-        contentContainerStyle={styles.list}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#7c5cfc" />}
+        contentContainerStyle={s.list}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.accent} />}
       />
     </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0f' },
-  center: { flex: 1, backgroundColor: '#0a0a0f', justifyContent: 'center', alignItems: 'center' },
+const makeStyles = (t: Theme) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: t.bg },
+  center: { flex: 1, backgroundColor: t.bg, justifyContent: 'center', alignItems: 'center' },
   list: { padding: 16, paddingBottom: 40 },
-  countText: { color: '#888', fontSize: 13, paddingHorizontal: 16, paddingTop: 4 },
+  countText: { color: t.textMuted, fontSize: 13, paddingHorizontal: 16, paddingTop: 4 },
   card: {
-    backgroundColor: '#1a1a2e',
+    backgroundColor: t.card,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#2a2a3e',
+    borderColor: t.cardBorder,
     padding: 16,
     marginBottom: 12,
   },
@@ -251,8 +255,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emoji: { fontSize: 24 },
-  badgeName: { color: '#fff', fontSize: 16, fontWeight: '700', marginBottom: 2 },
-  badgeDesc: { color: '#888', fontSize: 13, marginBottom: 4 },
+  badgeName: { color: t.text, fontSize: 16, fontWeight: '700', marginBottom: 2 },
+  badgeDesc: { color: t.textMuted, fontSize: 13, marginBottom: 4 },
   row: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   costText: { color: '#ffc107', fontSize: 13, fontWeight: '600' },
   premiumBadge: {
@@ -272,7 +276,7 @@ const styles = StyleSheet.create({
   },
   deleteBtnText: { color: '#ff4d4d', fontSize: 13, fontWeight: '600' },
   addBtn: {
-    backgroundColor: '#7c5cfc',
+    backgroundColor: t.accent,
     borderRadius: 12,
     margin: 16,
     marginBottom: 8,
@@ -281,35 +285,35 @@ const styles = StyleSheet.create({
   },
   addBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   formContainer: {
-    backgroundColor: '#1a1a2e',
+    backgroundColor: t.card,
     borderBottomWidth: 1,
-    borderBottomColor: '#2a2a3e',
+    borderBottomColor: t.cardBorder,
     padding: 16,
     maxHeight: 420,
   },
-  formTitle: { color: '#fff', fontSize: 18, fontWeight: '700', marginBottom: 16 },
-  label: { color: '#888', fontSize: 13, fontWeight: '600', marginBottom: 6, marginTop: 8 },
+  formTitle: { color: t.text, fontSize: 18, fontWeight: '700', marginBottom: 16 },
+  label: { color: t.textMuted, fontSize: 13, fontWeight: '600', marginBottom: 6, marginTop: 8 },
   input: {
-    backgroundColor: '#0a0a0f',
+    backgroundColor: t.bg,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#2a2a3e',
-    color: '#fff',
+    borderColor: t.cardBorder,
+    color: t.text,
     padding: 12,
     fontSize: 15,
   },
   formActions: { flexDirection: 'row', gap: 8, marginTop: 16, marginBottom: 8 },
   cancelFormBtn: {
     flex: 1,
-    backgroundColor: '#2a2a3e',
+    backgroundColor: t.cardBorder,
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: 'center',
   },
-  cancelFormText: { color: '#888', fontSize: 15, fontWeight: '600' },
+  cancelFormText: { color: t.textMuted, fontSize: 15, fontWeight: '600' },
   createBtn: {
     flex: 1,
-    backgroundColor: '#7c5cfc',
+    backgroundColor: t.accent,
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: 'center',

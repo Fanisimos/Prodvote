@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
-import { useAuthContext } from '../../lib/AuthContext';
+import { useTheme, Theme } from '../../lib/theme';
 
 interface StatCard {
   label: string;
@@ -19,6 +19,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
+  const { theme } = useTheme();
 
   const fetchStats = useCallback(async () => {
     const [users, features, votes, messages] = await Promise.all([
@@ -43,38 +44,40 @@ export default function AdminDashboard() {
 
   const onRefresh = () => { setRefreshing(true); fetchStats(); };
 
+  const s = makeStyles(theme);
+
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#7c5cfc" />
+      <View style={s.center}>
+        <ActivityIndicator size="large" color={theme.accent} />
       </View>
     );
   }
 
   return (
     <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#7c5cfc" />}
+      style={s.container}
+      contentContainerStyle={s.content}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.accent} />}
     >
-      <Text style={styles.heading}>Overview</Text>
-      <View style={styles.grid}>
+      <Text style={s.heading}>Overview</Text>
+      <View style={s.grid}>
         {stats.map((stat) => (
           <TouchableOpacity
             key={stat.label}
-            style={styles.card}
+            style={s.card}
             activeOpacity={stat.route ? 0.7 : 1}
             onPress={() => stat.route && router.push(stat.route as any)}
           >
-            <Text style={styles.cardIcon}>{stat.icon}</Text>
-            <Text style={styles.cardValue}>{stat.value.toLocaleString()}</Text>
-            <Text style={styles.cardLabel}>{stat.label}</Text>
+            <Text style={s.cardIcon}>{stat.icon}</Text>
+            <Text style={s.cardValue}>{stat.value.toLocaleString()}</Text>
+            <Text style={s.cardLabel}>{stat.label}</Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      <Text style={styles.heading}>Quick Actions</Text>
-      <View style={styles.actions}>
+      <Text style={s.heading}>Quick Actions</Text>
+      <View style={s.actions}>
         {[
           { label: 'Manage Users', route: '/(admin)/users', icon: '👥' },
           { label: 'Manage Features', route: '/(admin)/features', icon: '💡' },
@@ -84,12 +87,12 @@ export default function AdminDashboard() {
         ].map((action) => (
           <TouchableOpacity
             key={action.label}
-            style={styles.actionBtn}
+            style={s.actionBtn}
             onPress={() => router.push(action.route as any)}
           >
-            <Text style={styles.actionIcon}>{action.icon}</Text>
-            <Text style={styles.actionLabel}>{action.label}</Text>
-            <Text style={styles.actionArrow}>›</Text>
+            <Text style={s.actionIcon}>{action.icon}</Text>
+            <Text style={s.actionLabel}>{action.label}</Text>
+            <Text style={s.actionArrow}>›</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -97,36 +100,36 @@ export default function AdminDashboard() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0f' },
+const makeStyles = (t: Theme) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: t.bg },
   content: { padding: 16, paddingBottom: 40 },
-  center: { flex: 1, backgroundColor: '#0a0a0f', justifyContent: 'center', alignItems: 'center' },
-  heading: { color: '#fff', fontSize: 20, fontWeight: '700', marginBottom: 16, marginTop: 8 },
+  center: { flex: 1, backgroundColor: t.bg, justifyContent: 'center', alignItems: 'center' },
+  heading: { color: t.text, fontSize: 20, fontWeight: '700', marginBottom: 16, marginTop: 8 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 24 },
   card: {
-    backgroundColor: '#1a1a2e',
+    backgroundColor: t.card,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#2a2a3e',
+    borderColor: t.cardBorder,
     padding: 20,
     width: '48%' as any,
     flexGrow: 1,
     alignItems: 'center',
   },
   cardIcon: { fontSize: 28, marginBottom: 8 },
-  cardValue: { color: '#fff', fontSize: 28, fontWeight: '800', marginBottom: 4 },
-  cardLabel: { color: '#888', fontSize: 13, fontWeight: '500' },
+  cardValue: { color: t.text, fontSize: 28, fontWeight: '800', marginBottom: 4 },
+  cardLabel: { color: t.textMuted, fontSize: 13, fontWeight: '500' },
   actions: { gap: 8 },
   actionBtn: {
-    backgroundColor: '#1a1a2e',
+    backgroundColor: t.card,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#2a2a3e',
+    borderColor: t.cardBorder,
     padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
   },
   actionIcon: { fontSize: 20, marginRight: 12 },
-  actionLabel: { color: '#fff', fontSize: 16, fontWeight: '600', flex: 1 },
-  actionArrow: { color: '#7c5cfc', fontSize: 24, fontWeight: '700' },
+  actionLabel: { color: t.text, fontSize: 16, fontWeight: '600', flex: 1 },
+  actionArrow: { color: t.accent, fontSize: 24, fontWeight: '700' },
 });

@@ -1,22 +1,24 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  RefreshControl, ActivityIndicator, Alert,
+  RefreshControl, ActivityIndicator, Alert, Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../lib/AuthContext';
+import { useTheme, Theme } from '../../lib/theme';
 import { Feature } from '../../lib/types';
 
-type SortBy = 'trending' | 'newest' | 'top';
+type SortBy = 'top' | 'newest' | 'trending';
 
 export default function TrendingScreen() {
   const [features, setFeatures] = useState<Feature[]>([]);
   const [userVotes, setUserVotes] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [sortBy, setSortBy] = useState<SortBy>('trending');
+  const [sortBy, setSortBy] = useState<SortBy>('top');
   const { session, profile } = useAuthContext();
+  const { theme } = useTheme();
   const router = useRouter();
 
   const fetchFeatures = useCallback(async () => {
@@ -82,68 +84,79 @@ export default function TrendingScreen() {
 
   function renderFeature({ item }: { item: Feature }) {
     const hasVoted = userVotes.has(item.id);
+    const s = styles(theme);
     return (
       <TouchableOpacity
-        style={styles.card}
+        style={s.card}
         onPress={() => router.push(`/feature/${item.id}`)}
         activeOpacity={0.7}
       >
         <TouchableOpacity
-          style={[styles.voteBox, hasVoted && styles.voteBoxActive]}
+          style={[s.voteBox, hasVoted && s.voteBoxActive]}
           onPress={() => handleVote(item.id)}
         >
-          <Text style={[styles.voteArrow, hasVoted && styles.voteArrowActive]}>▲</Text>
-          <Text style={[styles.voteCount, hasVoted && styles.voteCountActive]}>
+          <Text style={[s.voteArrow, hasVoted && s.voteArrowActive]}>▲</Text>
+          <Text style={[s.voteCount, hasVoted && s.voteCountActive]}>
             {item.vote_count}
           </Text>
         </TouchableOpacity>
-        <View style={styles.cardContent}>
-          <View style={styles.cardMeta}>
+        <View style={s.cardContent}>
+          <View style={s.cardMeta}>
             {item.category_name && (
-              <View style={[styles.badge, { backgroundColor: (item.category_color || '#7c5cfc') + '22' }]}>
-                <Text style={[styles.badgeText, { color: item.category_color || '#7c5cfc' }]}>
+              <View style={[s.badge, { backgroundColor: (item.category_color || '#7c5cfc') + '22' }]}>
+                <Text style={[s.badgeText, { color: item.category_color || '#7c5cfc' }]}>
                   {item.category_name}
                 </Text>
               </View>
             )}
             {item.status !== 'open' && (
-              <View style={[styles.badge, { backgroundColor: getStatusColor(item.status) + '22' }]}>
-                <Text style={[styles.badgeText, { color: getStatusColor(item.status) }]}>
+              <View style={[s.badge, { backgroundColor: getStatusColor(item.status) + '22' }]}>
+                <Text style={[s.badgeText, { color: getStatusColor(item.status) }]}>
                   {item.status.replace('_', ' ')}
                 </Text>
               </View>
             )}
           </View>
-          <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
-          <Text style={styles.cardDesc} numberOfLines={2}>{item.description}</Text>
-          <View style={styles.cardFooter}>
-            <Text style={styles.cardAuthor}>by {item.author_username || 'anon'}</Text>
-            <Text style={styles.cardComments}>💬 {item.comment_count}</Text>
+          <Text style={s.cardTitle} numberOfLines={2}>{item.title}</Text>
+          <Text style={s.cardDesc} numberOfLines={2}>{item.description}</Text>
+          <View style={s.cardFooter}>
+            <Text style={s.cardAuthor}>by {item.author_username || 'anon'}</Text>
+            <Text style={s.cardComments}>💬 {item.comment_count}</Text>
           </View>
         </View>
       </TouchableOpacity>
     );
   }
 
+  const s = styles(theme);
+
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#7c5cfc" />
+      <View style={s.center}>
+        <ActivityIndicator size="large" color={theme.accent} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.sortBar}>
-        {(['trending', 'newest', 'top'] as SortBy[]).map(s => (
+    <View style={s.container}>
+      {/* Watermark */}
+      <Image
+        source={require('../../assets/images/logo-watermark.png')}
+        style={s.watermark}
+        tintColor={theme.watermarkTint}
+        resizeMode="contain"
+      />
+
+      <View style={s.sortBar}>
+        {(['top', 'newest', 'trending'] as SortBy[]).map(sb => (
           <TouchableOpacity
-            key={s}
-            style={[styles.sortTab, sortBy === s && styles.sortTabActive]}
-            onPress={() => setSortBy(s)}
+            key={sb}
+            style={[s.sortTab, sortBy === sb && s.sortTabActive]}
+            onPress={() => setSortBy(sb)}
           >
-            <Text style={[styles.sortText, sortBy === s && styles.sortTextActive]}>
-              {s.charAt(0).toUpperCase() + s.slice(1)}
+            <Text style={[s.sortText, sortBy === sb && s.sortTextActive]}>
+              {sb === 'trending' ? 'Hot' : sb.charAt(0).toUpperCase() + sb.slice(1)}
             </Text>
           </TouchableOpacity>
         ))}
@@ -153,19 +166,19 @@ export default function TrendingScreen() {
         data={features}
         keyExtractor={item => item.id}
         renderItem={renderFeature}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={s.list}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchFeatures(); }}
-            tintColor="#7c5cfc" />
+            tintColor={theme.accent} />
         }
         ListEmptyComponent={
-          <View style={styles.empty}>
-            <Text style={styles.emptyText}>No feature requests yet</Text>
-            <Text style={styles.emptySubtext}>Be the first to submit one!</Text>
+          <View style={s.empty}>
+            <Text style={{ fontSize: 48 }}>📬</Text>
+            <Text style={s.emptyText}>No feature requests yet</Text>
+            <Text style={s.emptySubtext}>Be the first to submit one!</Text>
           </View>
         }
       />
-
     </View>
   );
 }
@@ -178,50 +191,46 @@ function getStatusColor(status: string): string {
   return colors[status] || '#888';
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0f' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0a0a0f' },
+const styles = (t: Theme) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: t.bg },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: t.bg },
+  watermark: {
+    position: 'absolute', width: 600, height: 600, opacity: 0.05,
+    top: '15%', left: '50%', marginLeft: -300, zIndex: -1,
+  },
   sortBar: {
     flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 12,
-    gap: 8, borderBottomWidth: 1, borderBottomColor: '#1a1a2e',
+    gap: 8, borderBottomWidth: 1, borderBottomColor: t.cardBorder,
   },
-  sortTab: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#1a1a2e' },
-  sortTabActive: { backgroundColor: '#7c5cfc' },
-  sortText: { color: '#888', fontWeight: '600', fontSize: 14 },
-  sortTextActive: { color: '#fff' },
+  sortTab: { paddingHorizontal: 18, paddingVertical: 8, borderRadius: 20, backgroundColor: t.sortInactive },
+  sortTabActive: { backgroundColor: t.sortActive },
+  sortText: { color: t.sortTextInactive, fontWeight: '600', fontSize: 14 },
+  sortTextActive: { color: t.sortTextActive },
   list: { padding: 16, paddingBottom: 100 },
   card: {
-    flexDirection: 'row', backgroundColor: '#1a1a2e', borderRadius: 16,
-    padding: 16, gap: 14, borderWidth: 1, borderColor: '#2a2a3e', marginBottom: 12,
+    flexDirection: 'row', backgroundColor: t.card, borderRadius: 16,
+    padding: 16, gap: 14, borderWidth: 1, borderColor: t.cardBorder, marginBottom: 12,
   },
   voteBox: {
     alignItems: 'center', justifyContent: 'center', width: 52,
-    paddingVertical: 8, borderRadius: 12, backgroundColor: '#0a0a0f',
-    borderWidth: 1, borderColor: '#2a2a3e',
+    paddingVertical: 8, borderRadius: 12, backgroundColor: t.surface,
+    borderWidth: 1, borderColor: t.cardBorder,
   },
-  voteBoxActive: { backgroundColor: '#7c5cfc22', borderColor: '#7c5cfc' },
-  voteArrow: { fontSize: 16, color: '#888' },
-  voteArrowActive: { color: '#7c5cfc' },
-  voteCount: { fontSize: 18, fontWeight: '700', color: '#888', marginTop: 2 },
-  voteCountActive: { color: '#7c5cfc' },
+  voteBoxActive: { backgroundColor: t.accentLight, borderColor: t.accent },
+  voteArrow: { fontSize: 16, color: t.textMuted },
+  voteArrowActive: { color: t.accent },
+  voteCount: { fontSize: 18, fontWeight: '700', color: t.textMuted, marginTop: 2 },
+  voteCountActive: { color: t.accent },
   cardContent: { flex: 1, gap: 6 },
   cardMeta: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
   badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
   badgeText: { fontSize: 11, fontWeight: '600', textTransform: 'uppercase' },
-  cardTitle: { fontSize: 16, fontWeight: '700', color: '#fff', lineHeight: 22 },
-  cardDesc: { fontSize: 13, color: '#aaa', lineHeight: 18 },
+  cardTitle: { fontSize: 16, fontWeight: '700', color: t.text, lineHeight: 22 },
+  cardDesc: { fontSize: 13, color: t.textSecondary, lineHeight: 18 },
   cardFooter: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
-  cardAuthor: { fontSize: 12, color: '#666' },
-  cardComments: { fontSize: 12, color: '#666' },
-  fab: {
-    position: 'absolute', bottom: 24, right: 24, width: 60, height: 60,
-    borderRadius: 30, backgroundColor: '#7c5cfc', alignItems: 'center',
-    justifyContent: 'center', elevation: 8,
-    shadowColor: '#7c5cfc', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4, shadowRadius: 12,
-  },
-  fabText: { fontSize: 32, color: '#fff', fontWeight: '300', marginTop: -2 },
+  cardAuthor: { fontSize: 12, color: t.textMuted },
+  cardComments: { fontSize: 12, color: t.textMuted },
   empty: { alignItems: 'center', paddingTop: 80 },
-  emptyText: { fontSize: 18, fontWeight: '600', color: '#888' },
-  emptySubtext: { fontSize: 14, color: '#666', marginTop: 4 },
+  emptyText: { fontSize: 18, fontWeight: '600', color: t.textMuted, marginTop: 12 },
+  emptySubtext: { fontSize: 14, color: t.textMuted, marginTop: 4 },
 });

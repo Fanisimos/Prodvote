@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ScrollView, Alert, ActivityIndicator,
+  ScrollView, Alert, ActivityIndicator, Image,
 } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../lib/AuthContext';
+import { useTheme, Theme } from '../../lib/theme';
 import { Category } from '../../lib/types';
 
 export default function SubmitScreen() {
@@ -15,6 +16,7 @@ export default function SubmitScreen() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const { session } = useAuthContext();
+  const { theme } = useTheme();
 
   useEffect(() => {
     supabase.from('categories').select('*').then(({ data }) => {
@@ -53,102 +55,100 @@ export default function SubmitScreen() {
     }
   }
 
+  const s = styles(theme);
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <ScrollView style={s.container} contentContainerStyle={s.content}>
+      <Image source={require('../../assets/images/logo-watermark.png')} style={s.watermark} tintColor={theme.watermarkTint} resizeMode="contain" />
+
       {submitted && (
-        <View style={styles.successBanner}>
-          <Text style={styles.successText}>✅ Feature submitted successfully!</Text>
+        <View style={s.successBanner}>
+          <Text style={s.successText}>Feature submitted successfully!</Text>
         </View>
       )}
 
-      <Text style={styles.heading}>Submit Your Idea</Text>
-      <Text style={styles.subheading}>e.g. Add dark mode support</Text>
+      <Text style={s.heading}>Submit Your Idea</Text>
+      <Text style={s.subheading}>e.g. Add dark mode support</Text>
 
-      <Text style={styles.label}>Title</Text>
+      <Text style={s.label}>Title</Text>
       <TextInput
-        style={styles.input}
+        style={s.input}
         placeholder="Short, descriptive title"
-        placeholderTextColor="#666"
+        placeholderTextColor={theme.textMuted}
         value={title}
         onChangeText={setTitle}
         maxLength={120}
       />
-      <Text style={styles.charCount}>{title.length}/120</Text>
+      <Text style={s.charCount}>{title.length}/120</Text>
 
-      <Text style={styles.label}>Description</Text>
+      <Text style={s.label}>Description</Text>
       <TextInput
-        style={[styles.input, styles.textArea]}
+        style={[s.input, s.textArea]}
         placeholder="Describe the feature, why it's useful, and how it should work..."
-        placeholderTextColor="#666"
+        placeholderTextColor={theme.textMuted}
         value={description}
         onChangeText={setDescription}
         multiline
         textAlignVertical="top"
         maxLength={1000}
       />
-      <Text style={styles.charCount}>{description.length}/1000</Text>
+      <Text style={s.charCount}>{description.length}/1000</Text>
 
-      <Text style={styles.label}>Category</Text>
-      <View style={styles.categoryRow}>
+      <Text style={s.label}>Category</Text>
+      <View style={s.categoryRow}>
         {categories.map(cat => (
           <TouchableOpacity
             key={cat.id}
             style={[
-              styles.categoryChip,
+              s.categoryChip,
               selectedCategory === cat.id && { backgroundColor: cat.color + '33', borderColor: cat.color },
             ]}
             onPress={() => setSelectedCategory(cat.id)}
           >
-            <Text style={[
-              styles.categoryText,
-              selectedCategory === cat.id && { color: cat.color },
-            ]}>
+            <Text style={[s.categoryText, selectedCategory === cat.id && { color: cat.color }]}>
               {cat.name}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      <TouchableOpacity style={styles.submitBtn} onPress={handleSubmit} disabled={loading}>
+      <TouchableOpacity style={s.submitBtn} onPress={handleSubmit} disabled={loading}>
         {loading ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text style={styles.submitText}>Submit Feature Request</Text>
+          <Text style={s.submitText}>Submit Feature Request</Text>
         )}
       </TouchableOpacity>
     </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0f' },
+const styles = (t: Theme) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: t.bg },
   content: { padding: 24, gap: 4 },
-  heading: { fontSize: 24, fontWeight: '800', color: '#fff', marginTop: 8 },
-  subheading: { fontSize: 14, color: '#888', marginTop: 4, marginBottom: 8 },
+  watermark: { position: 'absolute', width: 600, height: 600, opacity: 0.05, top: '15%', left: '50%', marginLeft: -300, zIndex: -1 },
+  heading: { fontSize: 24, fontWeight: '800', color: t.text, marginTop: 8 },
+  subheading: { fontSize: 14, color: t.textMuted, marginTop: 4, marginBottom: 8 },
   successBanner: {
-    backgroundColor: '#34d39922',
-    padding: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#34d39944',
-    marginBottom: 8,
+    backgroundColor: t.successBg, padding: 14, borderRadius: 12,
+    borderWidth: 1, borderColor: t.success + '44', marginBottom: 8,
   },
-  successText: { color: '#34d399', fontWeight: '600', textAlign: 'center' },
-  label: { fontSize: 14, fontWeight: '600', color: '#aaa', marginTop: 16, marginBottom: 8 },
+  successText: { color: t.success, fontWeight: '600', textAlign: 'center' },
+  label: { fontSize: 14, fontWeight: '600', color: t.textSecondary, marginTop: 16, marginBottom: 8 },
   input: {
-    backgroundColor: '#1a1a2e', borderRadius: 14, padding: 16,
-    color: '#fff', fontSize: 16, borderWidth: 1, borderColor: '#2a2a3e',
+    backgroundColor: t.inputBg, borderRadius: 14, padding: 16,
+    color: t.text, fontSize: 16, borderWidth: 1, borderColor: t.inputBorder,
   },
   textArea: { height: 140 },
-  charCount: { fontSize: 12, color: '#555', textAlign: 'right', marginTop: 4 },
+  charCount: { fontSize: 12, color: t.textMuted, textAlign: 'right', marginTop: 4 },
   categoryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   categoryChip: {
     paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10,
-    backgroundColor: '#1a1a2e', borderWidth: 1, borderColor: '#2a2a3e',
+    backgroundColor: t.card, borderWidth: 1, borderColor: t.cardBorder,
   },
-  categoryText: { fontSize: 13, fontWeight: '600', color: '#888' },
+  categoryText: { fontSize: 13, fontWeight: '600', color: t.textMuted },
   submitBtn: {
-    backgroundColor: '#7c5cfc', borderRadius: 14, padding: 16,
+    backgroundColor: t.accent, borderRadius: 14, padding: 16,
     alignItems: 'center', marginTop: 32,
   },
   submitText: { color: '#fff', fontSize: 17, fontWeight: '700' },
