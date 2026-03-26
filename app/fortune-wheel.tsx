@@ -57,15 +57,21 @@ function getLabelPosition(index: number) {
   };
 }
 
-// Native audio players (created once, reused)
-let tickPlayer: any = null;
+// Native audio — pool of tick players so rapid ticks can overlap
+const TICK_POOL_SIZE = 6;
+let tickPool: any[] = [];
+let tickPoolIdx = 0;
 let winPlayer: any = null;
 let bigWinPlayer: any = null;
 
 function initNativeAudio() {
   if (Platform.OS === 'web' || !createAudioPlayer) return;
   try {
-    if (!tickPlayer) tickPlayer = createAudioPlayer(require('../assets/sounds/tick.wav'));
+    if (tickPool.length === 0) {
+      for (let i = 0; i < TICK_POOL_SIZE; i++) {
+        tickPool.push(createAudioPlayer(require('../assets/sounds/tick.wav')));
+      }
+    }
     if (!winPlayer) winPlayer = createAudioPlayer(require('../assets/sounds/win.wav'));
     if (!bigWinPlayer) bigWinPlayer = createAudioPlayer(require('../assets/sounds/bigwin.wav'));
   } catch (e) {
@@ -86,8 +92,13 @@ function initAudio() {
 function playTickSound() {
   if (Platform.OS !== 'web') {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (tickPlayer) {
-      try { tickPlayer.seekTo(0); tickPlayer.play(); } catch {}
+    if (tickPool.length > 0) {
+      try {
+        const player = tickPool[tickPoolIdx % TICK_POOL_SIZE];
+        tickPoolIdx++;
+        player.seekTo(0);
+        player.play();
+      } catch {}
     }
     return;
   }
@@ -156,6 +167,24 @@ function playBigWinSound() {
   });
 }
 
+// Schedule all tick sounds upfront with decelerating intervals
+// Starts fast (~40ms apart), slows to ~400ms near the end — matches wheel easing
+function scheduleTickSounds(durationMs: number): ReturnType<typeof setTimeout>[] {
+  const timeouts: ReturnType<typeof setTimeout>[] = [];
+  const totalTicks = 55; // enough ticks to feel exciting
+  let t = 0;
+  for (let i = 0; i < totalTicks; i++) {
+    const progress = i / totalTicks; // 0→1
+    // Easing: intervals start at ~40ms and grow exponentially to ~400ms
+    const interval = 40 + 360 * Math.pow(progress, 2.5);
+    t += interval;
+    if (t > durationMs - 200) break; // stop just before wheel stops
+    const timeout = setTimeout(() => playTickSound(), t);
+    timeouts.push(timeout);
+  }
+  return timeouts;
+}
+
 export default function FortuneWheelScreen() {
   const { profile, fetchProfile } = useAuthContext();
   const { theme } = useTheme();
@@ -210,21 +239,18 @@ export default function FortuneWheelScreen() {
     const targetAngle = 360 - segmentCenterDeg;
     const totalRotation = 360 * 8 + targetAngle;
 
-    // Tick sounds
-    let tickCount = 0;
-    const tickInterval = setInterval(() => {
-      tickCount++;
-      if (tickCount < 80) playTickSound();
-    }, 60);
+    // Schedule decelerating tick sounds to match wheel easing
+    const SPIN_DURATION = 5000;
+    const tickTimeouts = scheduleTickSounds(SPIN_DURATION);
 
     spinAnim.setValue(0);
     Animated.timing(spinAnim, {
       toValue: totalRotation,
-      duration: 5000,
+      duration: SPIN_DURATION,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: Platform.OS !== 'web',
     }).start(() => {
-      clearInterval(tickInterval);
+      tickTimeouts.forEach(t => clearTimeout(t));
       setSpinning(false);
       setResult(coinsWon);
 
