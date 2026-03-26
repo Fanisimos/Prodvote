@@ -3,6 +3,6 @@ const { getDefaultConfig } = require('expo/metro-config');
 const config = getDefaultConfig(__dirname);
 
 // Allow .html files to be bundled as assets
-config.resolver.assetExts.push('html');
+config.resolver.assetExts.push('html', 'wav');
 
 module.exports = config;

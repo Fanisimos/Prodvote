@@ -19,6 +19,7 @@ export interface Profile {
   active_frame?: AvatarFrame | null;
   push_token: string | null;
   login_streak: number;
+  last_daily_reward_at: string | null;
   last_login_date: string | null;
   accepted_terms_at: string | null;
   subscription_started_at: string | null;

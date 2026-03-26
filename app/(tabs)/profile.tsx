@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
 import Watermark from '../../components/Watermark';
 import { router } from 'expo-router';
@@ -30,7 +30,43 @@ export default function ProfileScreen() {
       .then(({ data }) => setOwnedFrames((data || []).map((d: any) => ({ ...d.frame, owned: true }))));
   }, [profile?.id]);
 
+  const [rewardCountdown, setRewardCountdown] = useState<string | null>(null);
+
+  const canClaimReward = useCallback(() => {
+    if (!profile?.last_daily_reward_at) return true;
+    const lastClaim = new Date(profile.last_daily_reward_at).getTime();
+    const nextClaim = lastClaim + 24 * 60 * 60 * 1000;
+    return Date.now() >= nextClaim;
+  }, [profile?.last_daily_reward_at]);
+
+  useEffect(() => {
+    if (!profile?.last_daily_reward_at || canClaimReward()) {
+      setRewardCountdown(null);
+      return;
+    }
+    function updateCountdown() {
+      const lastClaim = new Date(profile!.last_daily_reward_at!).getTime();
+      const nextClaim = lastClaim + 24 * 60 * 60 * 1000;
+      const remaining = nextClaim - Date.now();
+      if (remaining <= 0) {
+        setRewardCountdown(null);
+        return;
+      }
+      const hrs = Math.floor(remaining / (1000 * 60 * 60));
+      const mins = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+      const secs = Math.floor((remaining % (1000 * 60)) / 1000);
+      setRewardCountdown(`${hrs}h ${mins}m ${secs}s`);
+    }
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+    return () => clearInterval(interval);
+  }, [profile?.last_daily_reward_at, canClaimReward]);
+
   function claimDailyReward() {
+    if (!canClaimReward()) {
+      Alert.alert('Already Claimed', `Come back in ${rewardCountdown} for your next reward!`);
+      return;
+    }
     router.push('/fortune-wheel');
   }
 
@@ -123,12 +159,21 @@ export default function ProfileScreen() {
 
       {/* Daily Reward */}
       <TouchableOpacity style={s.dailyReward} onPress={claimDailyReward}>
-        <Text style={{ fontSize: 28 }}>🎁</Text>
+        <Text style={{ fontSize: 28 }}>{rewardCountdown ? '⏳' : '🎁'}</Text>
         <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={s.dailyTitle}>Claim Daily Reward!</Text>
-          <Text style={s.dailyStreak}>🔥 {profile.login_streak ?? 0} day streak</Text>
+          {rewardCountdown ? (
+            <>
+              <Text style={[s.dailyTitle, { color: theme.textMuted }]}>Come back in</Text>
+              <Text style={[s.dailyStreak, { color: theme.accent, fontWeight: '800', fontSize: 15 }]}>{rewardCountdown}</Text>
+            </>
+          ) : (
+            <>
+              <Text style={s.dailyTitle}>Claim Daily Reward!</Text>
+              <Text style={s.dailyStreak}>🔥 {profile.login_streak ?? 0} day streak</Text>
+            </>
+          )}
         </View>
-        <View style={[s.dailyDot, { backgroundColor: theme.success }]} />
+        <View style={[s.dailyDot, { backgroundColor: rewardCountdown ? theme.textMuted : theme.success }]} />
       </TouchableOpacity>
 
       {/* Your Plan */}

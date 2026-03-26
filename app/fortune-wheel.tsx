@@ -5,9 +5,16 @@ import {
 } from 'react-native';
 import Svg, { Path, Text as SvgText } from 'react-native-svg';
 import { router } from 'expo-router';
+import * as Haptics from 'expo-haptics';
 import { supabase } from '../lib/supabase';
 import { useAuthContext } from '../lib/AuthContext';
 import { useTheme, Theme } from '../lib/theme';
+
+// Native audio via expo-audio (only in production builds)
+let createAudioPlayer: any = null;
+if (Platform.OS !== 'web') {
+  try { createAudioPlayer = require('expo-audio').createAudioPlayer; } catch {}
+}
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const WHEEL_SIZE = Math.min(SCREEN_WIDTH - 60, 320);
@@ -50,6 +57,22 @@ function getLabelPosition(index: number) {
   };
 }
 
+// Native audio players (created once, reused)
+let tickPlayer: any = null;
+let winPlayer: any = null;
+let bigWinPlayer: any = null;
+
+function initNativeAudio() {
+  if (Platform.OS === 'web' || !createAudioPlayer) return;
+  try {
+    if (!tickPlayer) tickPlayer = createAudioPlayer(require('../assets/sounds/tick.wav'));
+    if (!winPlayer) winPlayer = createAudioPlayer(require('../assets/sounds/win.wav'));
+    if (!bigWinPlayer) bigWinPlayer = createAudioPlayer(require('../assets/sounds/bigwin.wav'));
+  } catch (e) {
+    console.warn('Could not init native audio:', e);
+  }
+}
+
 // Web Audio sound effects
 let audioCtx: AudioContext | null = null;
 
@@ -57,9 +80,17 @@ function initAudio() {
   if (Platform.OS === 'web' && !audioCtx) {
     audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
   }
+  initNativeAudio();
 }
 
 function playTickSound() {
+  if (Platform.OS !== 'web') {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (tickPlayer) {
+      try { tickPlayer.seekTo(0); tickPlayer.play(); } catch {}
+    }
+    return;
+  }
   if (!audioCtx) return;
   const osc = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
@@ -74,6 +105,13 @@ function playTickSound() {
 }
 
 function playWinSound() {
+  if (Platform.OS !== 'web') {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    if (winPlayer) {
+      try { winPlayer.seekTo(0); winPlayer.play(); } catch {}
+    }
+    return;
+  }
   if (!audioCtx) return;
   const notes = [523, 659, 784];
   notes.forEach((freq, i) => {
@@ -92,6 +130,15 @@ function playWinSound() {
 }
 
 function playBigWinSound() {
+  if (Platform.OS !== 'web') {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setTimeout(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy), 200);
+    setTimeout(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success), 400);
+    if (bigWinPlayer) {
+      try { bigWinPlayer.seekTo(0); bigWinPlayer.play(); } catch {}
+    }
+    return;
+  }
   if (!audioCtx) return;
   const melody = [523, 659, 784, 1047, 784, 1047, 1319];
   melody.forEach((freq, i) => {
@@ -141,7 +188,6 @@ export default function FortuneWheelScreen() {
       return;
     }
     initAudio();
-
     const { data, error } = await supabase.rpc('claim_daily_reward', { p_user_id: profile.id });
     if (error) {
       const msg = error.message?.includes('Already claimed')
