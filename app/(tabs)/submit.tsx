@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ScrollView, Alert, ActivityIndicator, Image,
+  ScrollView, Alert, ActivityIndicator,
 } from 'react-native';
+import Watermark from '../../components/Watermark';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../lib/AuthContext';
 import { useTheme, Theme } from '../../lib/theme';
@@ -58,8 +59,9 @@ export default function SubmitScreen() {
   const s = styles(theme);
 
   return (
-    <ScrollView style={s.container} contentContainerStyle={s.content}>
-      <Image source={require('../../assets/images/logo-watermark.png')} style={s.watermark} tintColor={theme.watermarkTint} resizeMode="contain" />
+    <View style={s.container}>
+      <Watermark />
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={s.content}>
 
       {submitted && (
         <View style={s.successBanner}>
@@ -120,13 +122,13 @@ export default function SubmitScreen() {
         )}
       </TouchableOpacity>
     </ScrollView>
+    </View>
   );
 }
 
 const styles = (t: Theme) => StyleSheet.create({
   container: { flex: 1, backgroundColor: t.bg },
   content: { padding: 24, gap: 4 },
-  watermark: { position: 'absolute', width: 600, height: 600, opacity: 0.05, top: '15%', left: '50%', marginLeft: -300, zIndex: -1 },
   heading: { fontSize: 24, fontWeight: '800', color: t.text, marginTop: 8 },
   subheading: { fontSize: 14, color: t.textMuted, marginTop: 4, marginBottom: 8 },
   successBanner: {

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView, Image } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
+import Watermark from '../../components/Watermark';
 import { router } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../lib/AuthContext';
@@ -80,13 +81,9 @@ export default function ProfileScreen() {
   const tColor = tierColor(profile.tier, theme);
 
   return (
-    <ScrollView style={s.container} contentContainerStyle={s.content}>
-      <Image
-        source={require('../../assets/images/logo-watermark.png')}
-        style={s.watermark}
-        tintColor={theme.watermarkTint}
-        resizeMode="contain"
-      />
+    <View style={s.container}>
+      <Watermark />
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={s.content}>
 
       {/* Avatar Section */}
       <View style={s.avatarSection}>
@@ -270,16 +267,13 @@ export default function ProfileScreen() {
         <Text style={s.signOutText}>Sign Out</Text>
       </TouchableOpacity>
     </ScrollView>
+    </View>
   );
 }
 
 const styles = (t: Theme) => StyleSheet.create({
   container: { flex: 1, backgroundColor: t.bg },
   content: { padding: 20, paddingBottom: 60 },
-  watermark: {
-    position: 'absolute', width: 600, height: 600, opacity: 0.05,
-    top: '15%', left: '50%', marginLeft: -300, zIndex: -1,
-  },
   avatarSection: { alignItems: 'center', marginTop: 10, marginBottom: 24 },
   avatarRing: {
     width: 100, height: 100, borderRadius: 50, borderWidth: 4,

@@ -125,8 +125,8 @@ export default function FortuneWheelScreen() {
     if (!spinning && result === null) {
       const loop = Animated.loop(
         Animated.sequence([
-          Animated.timing(pulseAnim, { toValue: 1.08, duration: 800, useNativeDriver: true }),
-          Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1.08, duration: 800, useNativeDriver: Platform.OS !== 'web' }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: Platform.OS !== 'web' }),
         ])
       );
       loop.start();
@@ -135,12 +135,19 @@ export default function FortuneWheelScreen() {
   }, [spinning, result]);
 
   async function handleSpin() {
-    if (spinning || !profile) return;
+    if (spinning) return;
+    if (!profile) {
+      Alert.alert('Not logged in', 'Please sign in to spin the wheel.');
+      return;
+    }
     initAudio();
 
     const { data, error } = await supabase.rpc('claim_daily_reward', { p_user_id: profile.id });
     if (error) {
-      Alert.alert('Already Claimed', 'Come back tomorrow for your next reward!');
+      const msg = error.message?.includes('Already claimed')
+        ? 'Come back tomorrow for your next reward!'
+        : error.message || 'Something went wrong';
+      Alert.alert('Cannot Spin', msg);
       return;
     }
 
@@ -169,7 +176,7 @@ export default function FortuneWheelScreen() {
       toValue: totalRotation,
       duration: 5000,
       easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
+      useNativeDriver: Platform.OS !== 'web',
     }).start(() => {
       clearInterval(tickInterval);
       setSpinning(false);
@@ -181,10 +188,10 @@ export default function FortuneWheelScreen() {
         celebrationScale.setValue(0);
         celebrationOpacity.setValue(1);
         Animated.parallel([
-          Animated.spring(celebrationScale, { toValue: 1, friction: 4, useNativeDriver: true }),
+          Animated.spring(celebrationScale, { toValue: 1, friction: 4, useNativeDriver: Platform.OS !== 'web' }),
           Animated.sequence([
             Animated.delay(2000),
-            Animated.timing(celebrationOpacity, { toValue: 0, duration: 500, useNativeDriver: true }),
+            Animated.timing(celebrationOpacity, { toValue: 0, duration: 500, useNativeDriver: Platform.OS !== 'web' }),
           ]),
         ]).start();
       } else {
@@ -289,7 +296,13 @@ export default function FortuneWheelScreen() {
           </TouchableOpacity>
         </Animated.View>
       ) : (
-        <TouchableOpacity style={s.doneBtn} onPress={() => router.back()}>
+        <TouchableOpacity style={s.doneBtn} onPress={() => {
+          if (router.canGoBack()) {
+            router.back();
+          } else {
+            router.replace('/(tabs)');
+          }
+        }}>
           <Text style={s.doneText}>Collect & Go Back</Text>
         </TouchableOpacity>
       )}

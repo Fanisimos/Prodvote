@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import {
   View, Text, ScrollView, TextInput, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Image,
+  ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import Watermark from '../../components/Watermark';
 import { useLocalSearchParams } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../lib/AuthContext';
@@ -80,8 +81,8 @@ export default function FeatureDetailScreen() {
 
   return (
     <KeyboardAvoidingView style={s.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <Watermark />
       <ScrollView contentContainerStyle={s.scroll}>
-        <Image source={require('../../assets/images/logo-watermark.png')} style={s.watermark} tintColor={theme.watermarkTint} resizeMode="contain" />
 
         <View style={s.header}>
           <View style={s.metaRow}>
@@ -174,7 +175,6 @@ const styles = (t: Theme) => StyleSheet.create({
   container: { flex: 1, backgroundColor: t.bg },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: t.bg },
   scroll: { padding: 20, paddingBottom: 100 },
-  watermark: { position: 'absolute', width: 600, height: 600, opacity: 0.05, top: '15%', left: '50%', marginLeft: -300, zIndex: -1 },
   header: { gap: 12 },
   metaRow: { flexDirection: 'row', gap: 8 },
   badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },

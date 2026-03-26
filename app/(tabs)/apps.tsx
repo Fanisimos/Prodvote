@@ -1,4 +1,5 @@
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import Watermark from '../../components/Watermark';
 import { router } from 'expo-router';
 import { useTheme, Theme } from '../../lib/theme';
 
@@ -44,13 +45,9 @@ export default function AppsScreen() {
   }
 
   return (
-    <ScrollView style={s.container} contentContainerStyle={s.content}>
-      <Image
-        source={require('../../assets/images/logo-watermark.png')}
-        style={s.watermark}
-        tintColor={theme.watermarkTint}
-        resizeMode="contain"
-      />
+    <View style={s.container}>
+      <Watermark />
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={s.content}>
 
       <Text style={s.heading}>Apps</Text>
 
@@ -63,16 +60,13 @@ export default function AppsScreen() {
 
       {GAMES.map(renderApp)}
     </ScrollView>
+    </View>
   );
 }
 
 const styles = (t: Theme) => StyleSheet.create({
   container: { flex: 1, backgroundColor: t.bg },
   content: { paddingBottom: 40 },
-  watermark: {
-    position: 'absolute', width: 600, height: 600, opacity: 0.05,
-    top: '15%', left: '50%', marginLeft: -300, zIndex: -1,
-  },
   heading: { fontSize: 28, fontWeight: '800', color: t.text, padding: 16, paddingBottom: 8 },
   appRow: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: t.card,

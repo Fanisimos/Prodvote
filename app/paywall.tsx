@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, ScrollView, Image } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, ScrollView } from 'react-native';
+import Watermark from '../components/Watermark';
 import { router } from 'expo-router';
 import { PurchasesPackage } from 'react-native-purchases';
 import { getOfferings, purchasePackage, restorePurchases, isRevenueCatReady } from '../lib/revenue';
@@ -165,13 +166,9 @@ export default function PaywallScreen() {
   }
 
   return (
-    <ScrollView style={s.container} contentContainerStyle={s.content}>
-      <Image
-        source={require('../assets/images/logo-watermark.png')}
-        style={s.watermark}
-        tintColor={theme.watermarkTint}
-        resizeMode="contain"
-      />
+    <View style={s.container}>
+      <Watermark />
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={s.content}>
 
       <Text style={s.heading}>Choose Your Plan</Text>
       <Text style={s.subheading}>Unlock more power. Support the community.</Text>
@@ -263,6 +260,7 @@ export default function PaywallScreen() {
         24 hours prior to the end of the current period.
       </Text>
     </ScrollView>
+    </View>
   );
 }
 
@@ -270,10 +268,6 @@ const styles = (t: Theme) => StyleSheet.create({
   container: { flex: 1, backgroundColor: t.bg },
   content: { padding: 20, paddingBottom: 60 },
   center: { flex: 1, backgroundColor: t.bg, alignItems: 'center', justifyContent: 'center' },
-  watermark: {
-    position: 'absolute', width: 600, height: 600, opacity: 0.05,
-    top: '15%', left: '50%', marginLeft: -300, zIndex: -1,
-  },
   heading: { fontSize: 28, fontWeight: '800', color: t.text, textAlign: 'center' },
   subheading: { fontSize: 15, color: t.textMuted, textAlign: 'center', marginTop: 6, marginBottom: 24 },
   planCard: {

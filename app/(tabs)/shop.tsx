@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  Alert, RefreshControl, ScrollView, Image,
+  Alert, RefreshControl, ScrollView,
 } from 'react-native';
+import Watermark from '../../components/Watermark';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../lib/AuthContext';
@@ -119,7 +120,19 @@ export default function ShopScreen() {
     ]);
   }
 
+  const COIN_PACKS: Record<string, number> = {
+    'prodvote_coins_1000': 1000,
+    'prodvote_coins_2500': 2500,
+    'prodvote_coins_5000': 5000,
+  };
+
   async function buyCoinPack(productId: string) {
+    if (!profile) return;
+    const coinAmount = COIN_PACKS[productId];
+    if (!coinAmount) {
+      Alert.alert('Error', 'Unknown coin pack.');
+      return;
+    }
     try {
       // Try offering first, fall back to direct product purchase
       const offering = await getOfferings();
@@ -132,8 +145,25 @@ export default function ShopScreen() {
         result = await purchaseByProductId(productId);
       }
       if (result.success) {
+        // Credit coins to user's profile
+        const { data: freshProfile } = await supabase
+          .from('profiles')
+          .select('coins')
+          .eq('id', profile.id)
+          .single();
+        const currentCoins = freshProfile?.coins ?? 0;
+        await supabase
+          .from('profiles')
+          .update({ coins: currentCoins + coinAmount })
+          .eq('id', profile.id);
+        // Log the transaction
+        await supabase.from('coin_rewards').insert({
+          user_id: profile.id,
+          amount: coinAmount,
+          reward_type: `iap_${productId}`,
+        });
         await fetchProfile();
-        Alert.alert('Coins Added!', 'Your coins have been credited to your account.');
+        Alert.alert('Coins Added!', `${coinAmount.toLocaleString()} coins have been credited to your account.`);
       } else if (!result.cancelled) {
         Alert.alert('Error', result.error || 'Purchase failed');
       }
@@ -146,12 +176,7 @@ export default function ShopScreen() {
 
   return (
     <View style={s.container}>
-      <Image
-        source={require('../../assets/images/logo-watermark.png')}
-        style={s.watermark}
-        tintColor={theme.watermarkTint}
-        resizeMode="contain"
-      />
+      <Watermark />
 
       {/* Coin Balance Header */}
       <View style={s.coinHeader}>
@@ -320,10 +345,6 @@ export default function ShopScreen() {
 
 const styles = (t: Theme) => StyleSheet.create({
   container: { flex: 1, backgroundColor: t.bg },
-  watermark: {
-    position: 'absolute', width: 600, height: 600, opacity: 0.05,
-    top: '15%', left: '50%', marginLeft: -300, zIndex: -1,
-  },
   coinHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     padding: 16, backgroundColor: t.card, borderBottomWidth: 1, borderBottomColor: t.cardBorder,

@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  RefreshControl, ActivityIndicator, Alert, Image,
+  RefreshControl, ActivityIndicator, Alert,
 } from 'react-native';
+import Watermark from '../../components/Watermark';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../lib/AuthContext';
@@ -140,13 +141,7 @@ export default function TrendingScreen() {
 
   return (
     <View style={s.container}>
-      {/* Watermark */}
-      <Image
-        source={require('../../assets/images/logo-watermark.png')}
-        style={s.watermark}
-        tintColor={theme.watermarkTint}
-        resizeMode="contain"
-      />
+      <Watermark />
 
       <View style={s.sortBar}>
         {(['top', 'newest', 'trending'] as SortBy[]).map(sb => (
@@ -194,10 +189,6 @@ function getStatusColor(status: string): string {
 const styles = (t: Theme) => StyleSheet.create({
   container: { flex: 1, backgroundColor: t.bg },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: t.bg },
-  watermark: {
-    position: 'absolute', width: 600, height: 600, opacity: 0.05,
-    top: '15%', left: '50%', marginLeft: -300, zIndex: -1,
-  },
   sortBar: {
     flexDirection: 'row', paddingHorizontal: 16, paddingVertical: 12,
     gap: 8, borderBottomWidth: 1, borderBottomColor: t.cardBorder,

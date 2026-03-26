@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl, Image } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native';
+import Watermark from '../../components/Watermark';
 import { router } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useTheme, Theme } from '../../lib/theme';
@@ -23,7 +24,7 @@ export default function ChatScreen() {
 
   return (
     <View style={s.container}>
-      <Image source={require('../../assets/images/logo-watermark.png')} style={s.watermark} tintColor={theme.watermarkTint} resizeMode="contain" />
+      <Watermark />
       <FlatList
         data={channels}
         keyExtractor={item => item.id}
@@ -59,7 +60,6 @@ export default function ChatScreen() {
 
 const styles = (t: Theme) => StyleSheet.create({
   container: { flex: 1, backgroundColor: t.bg },
-  watermark: { position: 'absolute', width: 600, height: 600, opacity: 0.05, top: '15%', left: '50%', marginLeft: -300, zIndex: -1 },
   channelCard: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: t.card,
     borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: t.cardBorder,
