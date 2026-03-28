@@ -12,15 +12,155 @@ import { Feature } from '../../lib/types';
 
 type SortBy = 'top' | 'newest' | 'trending';
 
+interface WeeklyStats {
+  totalFeatures: number;
+  totalVotes: number;
+  shippedCount: number;
+  topVoter: string | null;
+  newUsers: number;
+}
+
+interface ActivityEvent {
+  id: string;
+  type: 'shipped' | 'milestone' | 'streak' | 'new_feature';
+  emoji: string;
+  text: string;
+  time: string;
+}
+
+type FeedItem =
+  | { kind: 'highlights'; stats: WeeklyStats }
+  | { kind: 'activity'; event: ActivityEvent }
+  | { kind: 'feature'; feature: Feature };
+
 export default function TrendingScreen() {
   const [features, setFeatures] = useState<Feature[]>([]);
   const [userVotes, setUserVotes] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [sortBy, setSortBy] = useState<SortBy>('top');
+  const [weeklyStats, setWeeklyStats] = useState<WeeklyStats | null>(null);
+  const [activities, setActivities] = useState<ActivityEvent[]>([]);
   const { session, profile } = useAuthContext();
   const { theme } = useTheme();
   const router = useRouter();
+
+  const fetchWeeklyStats = useCallback(async () => {
+    const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    const [featuresRes, votesRes, shippedRes, usersRes] = await Promise.all([
+      supabase.from('features').select('id', { count: 'exact', head: true }).gte('created_at', oneWeekAgo),
+      supabase.from('votes').select('id', { count: 'exact', head: true }).gte('created_at', oneWeekAgo),
+      supabase.from('features').select('id', { count: 'exact', head: true }).eq('status', 'shipped').gte('shipped_at', oneWeekAgo),
+      supabase.from('profiles').select('id', { count: 'exact', head: true }).gte('created_at', oneWeekAgo),
+    ]);
+
+    // Top voter this week
+    const { data: topVoterData } = await supabase
+      .from('votes')
+      .select('user_id')
+      .gte('created_at', oneWeekAgo);
+
+    let topVoter: string | null = null;
+    if (topVoterData && topVoterData.length > 0) {
+      const voteCounts: Record<string, number> = {};
+      topVoterData.forEach(v => {
+        voteCounts[v.user_id] = (voteCounts[v.user_id] || 0) + 1;
+      });
+      const topUserId = Object.entries(voteCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
+      if (topUserId) {
+        const { data: topUser } = await supabase.from('profiles').select('username').eq('id', topUserId).single();
+        topVoter = topUser?.username || null;
+      }
+    }
+
+    setWeeklyStats({
+      totalFeatures: featuresRes.count || 0,
+      totalVotes: votesRes.count || 0,
+      shippedCount: shippedRes.count || 0,
+      topVoter,
+      newUsers: usersRes.count || 0,
+    });
+  }, []);
+
+  const fetchActivities = useCallback(async () => {
+    const events: ActivityEvent[] = [];
+    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+
+    // Recently shipped features
+    const { data: shipped } = await supabase
+      .from('features_with_details')
+      .select('id, title, author_username, shipped_at')
+      .eq('status', 'shipped')
+      .gte('shipped_at', threeDaysAgo)
+      .order('shipped_at', { ascending: false })
+      .limit(3);
+
+    shipped?.forEach(f => {
+      events.push({
+        id: `shipped-${f.id}`,
+        type: 'shipped',
+        emoji: '🎉',
+        text: `${f.author_username || 'Someone'}'s feature "${f.title}" was shipped!`,
+        time: timeAgo(f.shipped_at),
+      });
+    });
+
+    // Features that hit milestones (10+ votes)
+    const { data: milestones } = await supabase
+      .from('features_with_details')
+      .select('id, title, vote_count')
+      .gte('vote_count', 10)
+      .order('vote_count', { ascending: false })
+      .limit(3);
+
+    milestones?.forEach(f => {
+      events.push({
+        id: `milestone-${f.id}`,
+        type: 'milestone',
+        emoji: '🏆',
+        text: `"${f.title}" reached ${f.vote_count} votes!`,
+        time: '',
+      });
+    });
+
+    // Users with high streaks
+    const { data: streaks } = await supabase
+      .from('profiles')
+      .select('username, login_streak')
+      .gte('login_streak', 5)
+      .order('login_streak', { ascending: false })
+      .limit(2);
+
+    streaks?.forEach(u => {
+      events.push({
+        id: `streak-${u.username}`,
+        type: 'streak',
+        emoji: '🔥',
+        text: `@${u.username} is on a ${u.login_streak}-day streak!`,
+        time: '',
+      });
+    });
+
+    // Newest submissions
+    const { data: newest } = await supabase
+      .from('features_with_details')
+      .select('id, title, author_username, created_at')
+      .order('created_at', { ascending: false })
+      .limit(2);
+
+    newest?.forEach(f => {
+      events.push({
+        id: `new-${f.id}`,
+        type: 'new_feature',
+        emoji: '🚀',
+        text: `@${f.author_username || 'anon'} submitted "${f.title}"`,
+        time: timeAgo(f.created_at),
+      });
+    });
+
+    setActivities(events);
+  }, []);
 
   const fetchFeatures = useCallback(async () => {
     let query = supabase
@@ -47,7 +187,11 @@ export default function TrendingScreen() {
     setRefreshing(false);
   }, [sortBy, session]);
 
-  useEffect(() => { fetchFeatures(); }, [fetchFeatures]);
+  useEffect(() => {
+    fetchFeatures();
+    fetchWeeklyStats();
+    fetchActivities();
+  }, [fetchFeatures, fetchWeeklyStats, fetchActivities]);
 
   async function handleVote(featureId: string) {
     if (!session || !profile) return;
@@ -83,9 +227,83 @@ export default function TrendingScreen() {
     }
   }
 
-  function renderFeature({ item }: { item: Feature }) {
-    const hasVoted = userVotes.has(item.id);
+  // Build mixed feed: highlights at top, then interleave activities with features
+  const feedItems: FeedItem[] = [];
+  if (weeklyStats && (weeklyStats.totalFeatures > 0 || weeklyStats.totalVotes > 0)) {
+    feedItems.push({ kind: 'highlights', stats: weeklyStats });
+  }
+
+  // Interleave: after every 3 features, insert an activity event
+  let actIdx = 0;
+  features.forEach((feature, i) => {
+    if (i > 0 && i % 3 === 0 && actIdx < activities.length) {
+      feedItems.push({ kind: 'activity', event: activities[actIdx] });
+      actIdx++;
+    }
+    feedItems.push({ kind: 'feature', feature });
+  });
+  // Add remaining activities at the end
+  while (actIdx < activities.length) {
+    feedItems.push({ kind: 'activity', event: activities[actIdx] });
+    actIdx++;
+  }
+
+  function renderItem({ item }: { item: FeedItem }) {
     const s = styles(theme);
+    if (item.kind === 'highlights') return renderHighlights(item.stats, s);
+    if (item.kind === 'activity') return renderActivity(item.event, s);
+    return renderFeature(item.feature, s);
+  }
+
+  function renderHighlights(stats: WeeklyStats, s: ReturnType<typeof styles>) {
+    return (
+      <View style={s.highlightsCard}>
+        <View style={s.highlightsHeader}>
+          <Text style={{ fontSize: 18 }}>📊</Text>
+          <Text style={s.highlightsTitle}>This Week</Text>
+        </View>
+        <View style={s.highlightsGrid}>
+          <View style={s.highlightsStat}>
+            <Text style={s.highlightsNumber}>{stats.totalFeatures}</Text>
+            <Text style={s.highlightsLabel}>Ideas</Text>
+          </View>
+          <View style={s.highlightsStat}>
+            <Text style={s.highlightsNumber}>{stats.totalVotes}</Text>
+            <Text style={s.highlightsLabel}>Votes</Text>
+          </View>
+          <View style={s.highlightsStat}>
+            <Text style={s.highlightsNumber}>{stats.shippedCount}</Text>
+            <Text style={s.highlightsLabel}>Shipped</Text>
+          </View>
+          <View style={s.highlightsStat}>
+            <Text style={s.highlightsNumber}>{stats.newUsers}</Text>
+            <Text style={s.highlightsLabel}>New Users</Text>
+          </View>
+        </View>
+        {stats.topVoter && (
+          <View style={s.topVoterRow}>
+            <Text style={{ fontSize: 14 }}>👑</Text>
+            <Text style={s.topVoterText}>Top voter: <Text style={{ color: theme.accent, fontWeight: '700' }}>@{stats.topVoter}</Text></Text>
+          </View>
+        )}
+      </View>
+    );
+  }
+
+  function renderActivity(event: ActivityEvent, s: ReturnType<typeof styles>) {
+    return (
+      <View style={s.activityCard}>
+        <Text style={{ fontSize: 20 }}>{event.emoji}</Text>
+        <View style={s.activityContent}>
+          <Text style={s.activityText} numberOfLines={2}>{event.text}</Text>
+          {event.time ? <Text style={s.activityTime}>{event.time}</Text> : null}
+        </View>
+      </View>
+    );
+  }
+
+  function renderFeature(item: Feature, s: ReturnType<typeof styles>) {
+    const hasVoted = userVotes.has(item.id);
     return (
       <TouchableOpacity
         style={s.card}
@@ -158,12 +376,21 @@ export default function TrendingScreen() {
       </View>
 
       <FlatList
-        data={features}
-        keyExtractor={item => item.id}
-        renderItem={renderFeature}
+        data={feedItems}
+        keyExtractor={(item, index) => {
+          if (item.kind === 'highlights') return 'highlights';
+          if (item.kind === 'activity') return item.event.id;
+          return item.feature.id;
+        }}
+        renderItem={renderItem}
         contentContainerStyle={s.list}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchFeatures(); }}
+          <RefreshControl refreshing={refreshing} onRefresh={() => {
+            setRefreshing(true);
+            fetchFeatures();
+            fetchWeeklyStats();
+            fetchActivities();
+          }}
             tintColor={theme.accent} />
         }
         ListEmptyComponent={
@@ -176,6 +403,18 @@ export default function TrendingScreen() {
       />
     </View>
   );
+}
+
+function timeAgo(dateStr: string): string {
+  if (!dateStr) return '';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
 }
 
 function getStatusColor(status: string): string {
@@ -198,6 +437,40 @@ const styles = (t: Theme) => StyleSheet.create({
   sortText: { color: t.sortTextInactive, fontWeight: '600', fontSize: 14 },
   sortTextActive: { color: t.sortTextActive },
   list: { padding: 16, paddingBottom: 100 },
+
+  // Weekly Highlights
+  highlightsCard: {
+    backgroundColor: t.card, borderRadius: 16, padding: 18,
+    borderWidth: 1, borderColor: t.accent + '44', marginBottom: 16,
+  },
+  highlightsHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14,
+  },
+  highlightsTitle: { fontSize: 18, fontWeight: '800', color: t.text },
+  highlightsGrid: {
+    flexDirection: 'row', justifyContent: 'space-between',
+  },
+  highlightsStat: { alignItems: 'center', flex: 1 },
+  highlightsNumber: { fontSize: 24, fontWeight: '800', color: t.accent },
+  highlightsLabel: { fontSize: 12, color: t.textMuted, marginTop: 2, fontWeight: '600' },
+  topVoterRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: t.cardBorder,
+  },
+  topVoterText: { fontSize: 14, color: t.textSecondary },
+
+  // Activity Events
+  activityCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: t.card, borderRadius: 14, padding: 14,
+    marginBottom: 12, borderWidth: 1, borderColor: t.cardBorder,
+    borderLeftWidth: 3, borderLeftColor: t.accent,
+  },
+  activityContent: { flex: 1 },
+  activityText: { fontSize: 14, color: t.text, fontWeight: '500', lineHeight: 20 },
+  activityTime: { fontSize: 12, color: t.textMuted, marginTop: 3 },
+
+  // Feature Cards
   card: {
     flexDirection: 'row', backgroundColor: t.card, borderRadius: 16,
     padding: 16, gap: 14, borderWidth: 1, borderColor: t.cardBorder, marginBottom: 12,

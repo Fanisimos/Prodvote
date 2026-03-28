@@ -168,19 +168,22 @@ function playBigWinSound() {
 }
 
 // Schedule all tick sounds upfront with decelerating intervals
-// Starts fast (~40ms apart), slows to ~400ms near the end — matches wheel easing
+// Mimics a real wheel: steady fast ticks that gradually slow down as friction kicks in
 function scheduleTickSounds(durationMs: number): ReturnType<typeof setTimeout>[] {
   const timeouts: ReturnType<typeof setTimeout>[] = [];
-  const totalTicks = 55; // enough ticks to feel exciting
   let t = 0;
-  for (let i = 0; i < totalTicks; i++) {
-    const progress = i / totalTicks; // 0→1
-    // Easing: intervals start at ~40ms and grow exponentially to ~400ms
-    const interval = 40 + 360 * Math.pow(progress, 2.5);
+  let tick = 0;
+  // Start at 85ms intervals (fast but clean), decelerate to ~600ms
+  // Use the same cubic-out easing as the wheel animation
+  while (t < durationMs - 300) {
+    const progress = t / durationMs; // 0→1 as spin progresses
+    // Cubic easing: slow start of deceleration, then rapid slowdown at end
+    const interval = 85 + 515 * Math.pow(progress, 3);
     t += interval;
-    if (t > durationMs - 200) break; // stop just before wheel stops
+    if (t > durationMs - 300) break;
     const timeout = setTimeout(() => playTickSound(), t);
     timeouts.push(timeout);
+    tick++;
   }
   return timeouts;
 }

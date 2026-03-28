@@ -1,7 +1,9 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, PanResponder, Dimensions,
+  View, Text, TouchableOpacity, StyleSheet, PanResponder,
 } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
+import { useTheme, Theme } from '../../lib/theme';
 
 interface Point {
   x: number;
@@ -17,63 +19,45 @@ interface Stroke {
 const COLORS = ['#fff', '#7c5cfc', '#ff4d6a', '#34d399', '#ffb347', '#4dc9f6'];
 const BRUSH_SIZES = [3, 6, 10];
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+// Convert points array to a smooth SVG path using quadratic bezier curves
+function pointsToPath(points: Point[]): string {
+  if (points.length === 0) return '';
+  if (points.length === 1) {
+    // Single dot
+    return `M ${points[0].x} ${points[0].y} L ${points[0].x + 0.5} ${points[0].y + 0.5}`;
+  }
+  let d = `M ${points[0].x} ${points[0].y}`;
+  if (points.length === 2) {
+    d += ` L ${points[1].x} ${points[1].y}`;
+    return d;
+  }
+  // Smooth curve through all points using quadratic bezier
+  for (let i = 1; i < points.length - 1; i++) {
+    const midX = (points[i].x + points[i + 1].x) / 2;
+    const midY = (points[i].y + points[i + 1].y) / 2;
+    d += ` Q ${points[i].x} ${points[i].y} ${midX} ${midY}`;
+  }
+  // Last point
+  const last = points[points.length - 1];
+  d += ` L ${last.x} ${last.y}`;
+  return d;
+}
 
 export default function WhiteboardScreen() {
+  const { theme } = useTheme();
+  const s = styles(theme);
   const [strokes, setStrokes] = useState<Stroke[]>([]);
   const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null);
   const [selectedColor, setSelectedColor] = useState('#fff');
   const [brushSize, setBrushSize] = useState(3);
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: (evt) => {
-        const { locationX, locationY } = evt.nativeEvent;
-        const newStroke: Stroke = {
-          points: [{ x: locationX, y: locationY }],
-          color: selectedColor,
-          width: brushSize,
-        };
-        setCurrentStroke(newStroke);
-      },
-      onPanResponderMove: (evt) => {
-        const { locationX, locationY } = evt.nativeEvent;
-        setCurrentStroke((prev) => {
-          if (!prev) return prev;
-          return { ...prev, points: [...prev.points, { x: locationX, y: locationY }] };
-        });
-      },
-      onPanResponderRelease: () => {
-        setCurrentStroke((prev) => {
-          if (prev) {
-            setStrokes((s) => [...s, prev]);
-          }
-          return null;
-        });
-      },
-    })
-  ).current;
-
-  // We need to recreate panResponder when color/size changes
-  const activePanResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {},
-      onPanResponderMove: () => {},
-      onPanResponderRelease: () => {},
-    })
-  );
-
-  // Use a ref-based approach to always get latest color/size
   const colorRef = useRef(selectedColor);
   const sizeRef = useRef(brushSize);
+  const currentStrokeRef = useRef<Stroke | null>(null);
   colorRef.current = selectedColor;
   sizeRef.current = brushSize;
 
-  const dynamicPanResponder = useRef(
+  const panResponder = useMemo(() =>
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
@@ -84,25 +68,27 @@ export default function WhiteboardScreen() {
           color: colorRef.current,
           width: sizeRef.current,
         };
+        currentStrokeRef.current = newStroke;
         setCurrentStroke(newStroke);
       },
       onPanResponderMove: (evt) => {
         const { locationX, locationY } = evt.nativeEvent;
-        setCurrentStroke((prev) => {
-          if (!prev) return prev;
-          return { ...prev, points: [...prev.points, { x: locationX, y: locationY }] };
-        });
+        const prev = currentStrokeRef.current;
+        if (!prev) return;
+        const updated = { ...prev, points: [...prev.points, { x: locationX, y: locationY }] };
+        currentStrokeRef.current = updated;
+        setCurrentStroke(updated);
       },
       onPanResponderRelease: () => {
-        setCurrentStroke((prev) => {
-          if (prev) {
-            setStrokes((s) => [...s, prev]);
-          }
-          return null;
-        });
+        const finished = currentStrokeRef.current;
+        if (finished) {
+          setStrokes((s) => [...s, finished]);
+        }
+        currentStrokeRef.current = null;
+        setCurrentStroke(null);
       },
-    })
-  ).current;
+    }),
+  []);
 
   function handleClear() {
     setStrokes([]);
@@ -113,43 +99,38 @@ export default function WhiteboardScreen() {
     setStrokes((prev) => prev.slice(0, -1));
   }
 
-  function renderStroke(stroke: Stroke, index: number) {
-    // Render stroke as a series of small circles (dots) along the path
-    return stroke.points.map((point, i) => (
-      <View
-        key={`${index}-${i}`}
-        style={{
-          position: 'absolute',
-          left: point.x - stroke.width / 2,
-          top: point.y - stroke.width / 2,
-          width: stroke.width,
-          height: stroke.width,
-          borderRadius: stroke.width / 2,
-          backgroundColor: stroke.color,
-        }}
-      />
-    ));
-  }
+  const allStrokes = currentStroke ? [...strokes, currentStroke] : strokes;
 
   return (
-    <View style={styles.container}>
+    <View style={s.container}>
       {/* Canvas */}
-      <View style={styles.canvas} {...dynamicPanResponder.panHandlers}>
-        {strokes.map((stroke, i) => renderStroke(stroke, i))}
-        {currentStroke && renderStroke(currentStroke, strokes.length)}
+      <View style={s.canvas} {...panResponder.panHandlers}>
+        <Svg style={StyleSheet.absoluteFill}>
+          {allStrokes.map((stroke, i) => (
+            <Path
+              key={i}
+              d={pointsToPath(stroke.points)}
+              stroke={stroke.color}
+              strokeWidth={stroke.width}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+            />
+          ))}
+        </Svg>
       </View>
 
       {/* Toolbar */}
-      <View style={styles.toolbar}>
+      <View style={s.toolbar}>
         {/* Colors */}
-        <View style={styles.colorRow}>
+        <View style={s.colorRow}>
           {COLORS.map((color) => (
             <TouchableOpacity
               key={color}
               style={[
-                styles.colorBtn,
+                s.colorBtn,
                 { backgroundColor: color },
-                selectedColor === color && styles.colorBtnActive,
+                selectedColor === color && s.colorBtnActive,
               ]}
               onPress={() => setSelectedColor(color)}
             />
@@ -157,11 +138,11 @@ export default function WhiteboardScreen() {
         </View>
 
         {/* Brush sizes */}
-        <View style={styles.sizeRow}>
+        <View style={s.sizeRow}>
           {BRUSH_SIZES.map((size) => (
             <TouchableOpacity
               key={size}
-              style={[styles.sizeBtn, brushSize === size && styles.sizeBtnActive]}
+              style={[s.sizeBtn, brushSize === size && s.sizeBtnActive]}
               onPress={() => setBrushSize(size)}
             >
               <View
@@ -177,12 +158,12 @@ export default function WhiteboardScreen() {
         </View>
 
         {/* Actions */}
-        <View style={styles.actionRow}>
-          <TouchableOpacity style={styles.actionBtn} onPress={handleUndo}>
-            <Text style={styles.actionBtnText}>Undo</Text>
+        <View style={s.actionRow}>
+          <TouchableOpacity style={s.actionBtn} onPress={handleUndo}>
+            <Text style={s.actionBtnText}>Undo</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionBtn, styles.clearBtn]} onPress={handleClear}>
-            <Text style={[styles.actionBtnText, { color: '#ff4d6a' }]}>Clear</Text>
+          <TouchableOpacity style={[s.actionBtn, s.clearBtn]} onPress={handleClear}>
+            <Text style={[s.actionBtnText, { color: theme.danger }]}>Clear</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -190,31 +171,31 @@ export default function WhiteboardScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0f' },
+const styles = (t: Theme) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: t.bg },
   canvas: {
-    flex: 1, backgroundColor: '#111122', margin: 8, borderRadius: 16,
-    overflow: 'hidden', borderWidth: 1, borderColor: '#2a2a3e',
+    flex: 1, backgroundColor: t.surface, margin: 8, borderRadius: 16,
+    overflow: 'hidden', borderWidth: 1, borderColor: t.cardBorder,
   },
   toolbar: {
-    backgroundColor: '#1a1a2e', padding: 16, paddingBottom: 32,
-    borderTopWidth: 1, borderTopColor: '#2a2a3e',
+    backgroundColor: t.card, padding: 16, paddingBottom: 32,
+    borderTopWidth: 1, borderTopColor: t.cardBorder,
   },
   colorRow: { flexDirection: 'row', justifyContent: 'center', gap: 12, marginBottom: 14 },
   colorBtn: {
-    width: 32, height: 32, borderRadius: 16, borderWidth: 2, borderColor: '#2a2a3e',
+    width: 32, height: 32, borderRadius: 16, borderWidth: 2, borderColor: t.cardBorder,
   },
-  colorBtnActive: { borderColor: '#7c5cfc', borderWidth: 3 },
+  colorBtnActive: { borderColor: t.accent, borderWidth: 3 },
   sizeRow: { flexDirection: 'row', justifyContent: 'center', gap: 16, marginBottom: 14 },
   sizeBtn: {
-    width: 40, height: 40, borderRadius: 12, backgroundColor: '#2a2a3e',
+    width: 40, height: 40, borderRadius: 12, backgroundColor: t.surface,
     alignItems: 'center', justifyContent: 'center',
   },
-  sizeBtnActive: { backgroundColor: '#7c5cfc33', borderWidth: 1, borderColor: '#7c5cfc' },
+  sizeBtnActive: { backgroundColor: t.accentLight, borderWidth: 1, borderColor: t.accent },
   actionRow: { flexDirection: 'row', justifyContent: 'center', gap: 12 },
   actionBtn: {
-    backgroundColor: '#2a2a3e', paddingHorizontal: 24, paddingVertical: 10, borderRadius: 10,
+    backgroundColor: t.surface, paddingHorizontal: 24, paddingVertical: 10, borderRadius: 10,
   },
-  actionBtnText: { color: '#aaa', fontWeight: '600', fontSize: 14 },
-  clearBtn: { backgroundColor: '#ff4d6a15' },
+  actionBtnText: { color: t.textMuted, fontWeight: '600', fontSize: 14 },
+  clearBtn: { backgroundColor: t.dangerBg },
 });

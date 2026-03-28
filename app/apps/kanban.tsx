@@ -1,23 +1,26 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ScrollView, ActivityIndicator, Alert, RefreshControl,
+  ScrollView, ActivityIndicator, Alert,
 } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../lib/AuthContext';
+import { useTheme, Theme } from '../../lib/theme';
 import { KanbanBoard, KanbanCard } from '../../lib/types';
 
 const COLUMNS = ['todo', 'in_progress', 'done'] as const;
 type ColumnName = typeof COLUMNS[number];
 
-const COLUMN_CONFIG: Record<ColumnName, { label: string; color: string }> = {
-  todo: { label: 'To Do', color: '#ffb347' },
-  in_progress: { label: 'In Progress', color: '#7c5cfc' },
-  done: { label: 'Done', color: '#34d399' },
+const COLUMN_CONFIG: Record<ColumnName, { label: string; color: string; emoji: string }> = {
+  todo: { label: 'To Do', color: '#ffb347', emoji: '📋' },
+  in_progress: { label: 'In Progress', color: '#7c5cfc', emoji: '⚡' },
+  done: { label: 'Done', color: '#34d399', emoji: '✅' },
 };
 
 export default function KanbanScreen() {
   const { session } = useAuthContext();
+  const { theme } = useTheme();
+  const s = styles(theme);
   const [board, setBoard] = useState<KanbanBoard | null>(null);
   const [cards, setCards] = useState<KanbanCard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,7 +31,6 @@ export default function KanbanScreen() {
     if (!session) return;
     setLoading(true);
 
-    // Get or create the user's default board
     let { data: boards } = await supabase
       .from('kanban_boards')
       .select('*')
@@ -122,18 +124,18 @@ export default function KanbanScreen() {
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#7c5cfc" />
+      <View style={s.center}>
+        <ActivityIndicator size="large" color={theme.accent} />
       </View>
     );
   }
 
   return (
     <ScrollView
-      style={styles.container}
+      style={s.container}
       horizontal
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.scrollContent}
+      contentContainerStyle={s.scrollContent}
     >
       {COLUMNS.map((col) => {
         const config = COLUMN_CONFIG[col];
@@ -141,36 +143,38 @@ export default function KanbanScreen() {
         const colIndex = COLUMNS.indexOf(col);
 
         return (
-          <View key={col} style={styles.column}>
-            <View style={styles.columnHeader}>
-              <View style={[styles.columnDot, { backgroundColor: config.color }]} />
-              <Text style={styles.columnTitle}>{config.label}</Text>
-              <Text style={styles.columnCount}>{columnCards.length}</Text>
+          <View key={col} style={s.column}>
+            <View style={s.columnHeader}>
+              <Text style={{ fontSize: 16 }}>{config.emoji}</Text>
+              <Text style={s.columnTitle}>{config.label}</Text>
+              <View style={[s.columnCountBadge, { backgroundColor: config.color + '22' }]}>
+                <Text style={[s.columnCount, { color: config.color }]}>{columnCards.length}</Text>
+              </View>
             </View>
 
-            <ScrollView style={styles.columnCards} showsVerticalScrollIndicator={false}>
+            <ScrollView style={s.columnCards} showsVerticalScrollIndicator={false}>
               {columnCards.map((card) => (
                 <TouchableOpacity
                   key={card.id}
-                  style={styles.card}
+                  style={s.card}
                   onLongPress={() => deleteCard(card.id)}
                 >
-                  <Text style={styles.cardTitle}>{card.title}</Text>
-                  <View style={styles.cardActions}>
+                  <Text style={s.cardTitle}>{card.title}</Text>
+                  <View style={s.cardActions}>
                     {colIndex > 0 && (
                       <TouchableOpacity
-                        style={styles.moveBtn}
+                        style={s.moveBtn}
                         onPress={() => moveCard(card, 'left')}
                       >
-                        <Text style={styles.moveBtnText}>←</Text>
+                        <Text style={s.moveBtnText}>←</Text>
                       </TouchableOpacity>
                     )}
                     {colIndex < COLUMNS.length - 1 && (
                       <TouchableOpacity
-                        style={styles.moveBtn}
+                        style={[s.moveBtn, { backgroundColor: config.color + '22' }]}
                         onPress={() => moveCard(card, 'right')}
                       >
-                        <Text style={styles.moveBtnText}>→</Text>
+                        <Text style={[s.moveBtnText, { color: config.color }]}>→</Text>
                       </TouchableOpacity>
                     )}
                   </View>
@@ -178,37 +182,37 @@ export default function KanbanScreen() {
               ))}
 
               {addingColumn === col ? (
-                <View style={styles.addCardRow}>
+                <View style={s.addCardRow}>
                   <TextInput
-                    style={styles.addCardInput}
+                    style={s.addCardInput}
                     placeholder="Card title..."
-                    placeholderTextColor="#666"
+                    placeholderTextColor={theme.textMuted}
                     value={newCardText}
                     onChangeText={setNewCardText}
                     autoFocus
                     maxLength={100}
                     onSubmitEditing={() => addCard(col)}
                   />
-                  <View style={styles.addCardActions}>
+                  <View style={s.addCardActions}>
                     <TouchableOpacity
-                      style={styles.addCardBtn}
+                      style={s.addCardBtn}
                       onPress={() => addCard(col)}
                     >
-                      <Text style={styles.addCardBtnText}>Add</Text>
+                      <Text style={s.addCardBtnText}>Add</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={() => { setAddingColumn(null); setNewCardText(''); }}
                     >
-                      <Text style={styles.addCardCancel}>Cancel</Text>
+                      <Text style={s.addCardCancel}>Cancel</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
               ) : (
                 <TouchableOpacity
-                  style={styles.addCardTrigger}
+                  style={s.addCardTrigger}
                   onPress={() => { setAddingColumn(col); setNewCardText(''); }}
                 >
-                  <Text style={styles.addCardTriggerText}>+ Add card</Text>
+                  <Text style={s.addCardTriggerText}>+ Add card</Text>
                 </TouchableOpacity>
               )}
             </ScrollView>
@@ -219,42 +223,45 @@ export default function KanbanScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0f' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0a0a0f' },
+const styles = (t: Theme) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: t.bg },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: t.bg },
   scrollContent: { padding: 16, gap: 12 },
   column: {
-    width: 280, backgroundColor: '#1a1a2e', borderRadius: 16,
-    padding: 14, borderWidth: 1, borderColor: '#2a2a3e',
+    width: 280, backgroundColor: t.card, borderRadius: 16,
+    padding: 14, borderWidth: 1, borderColor: t.cardBorder,
   },
   columnHeader: {
     flexDirection: 'row', alignItems: 'center', marginBottom: 14, gap: 8,
   },
-  columnDot: { width: 10, height: 10, borderRadius: 5 },
-  columnTitle: { fontSize: 16, fontWeight: '700', color: '#fff', flex: 1 },
-  columnCount: { fontSize: 13, color: '#888', fontWeight: '600' },
+  columnTitle: { fontSize: 16, fontWeight: '700', color: t.text, flex: 1 },
+  columnCountBadge: {
+    paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10,
+  },
+  columnCount: { fontSize: 13, fontWeight: '700' },
   columnCards: { flex: 1 },
   card: {
-    backgroundColor: '#0a0a0f', borderRadius: 12, padding: 14,
-    marginBottom: 8, borderWidth: 1, borderColor: '#2a2a3e',
+    backgroundColor: t.surface, borderRadius: 12, padding: 14,
+    marginBottom: 8, borderWidth: 1, borderColor: t.cardBorder,
   },
-  cardTitle: { fontSize: 14, color: '#eee', fontWeight: '500' },
+  cardTitle: { fontSize: 14, color: t.text, fontWeight: '500' },
   cardActions: { flexDirection: 'row', gap: 8, marginTop: 10 },
   moveBtn: {
-    backgroundColor: '#2a2a3e', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6,
+    backgroundColor: t.surface, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6,
+    borderWidth: 1, borderColor: t.cardBorder,
   },
-  moveBtnText: { color: '#aaa', fontSize: 14, fontWeight: '600' },
+  moveBtnText: { color: t.textMuted, fontSize: 14, fontWeight: '600' },
   addCardRow: { marginTop: 4 },
   addCardInput: {
-    backgroundColor: '#0a0a0f', borderRadius: 10, padding: 12,
-    color: '#fff', fontSize: 14, borderWidth: 1, borderColor: '#2a2a3e',
+    backgroundColor: t.inputBg, borderRadius: 10, padding: 12,
+    color: t.text, fontSize: 14, borderWidth: 1, borderColor: t.inputBorder,
   },
   addCardActions: { flexDirection: 'row', gap: 12, marginTop: 8, alignItems: 'center' },
   addCardBtn: {
-    backgroundColor: '#7c5cfc', borderRadius: 8, paddingHorizontal: 16, paddingVertical: 8,
+    backgroundColor: t.accent, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 8,
   },
   addCardBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
-  addCardCancel: { color: '#888', fontSize: 13 },
+  addCardCancel: { color: t.textMuted, fontSize: 13 },
   addCardTrigger: { paddingVertical: 10 },
-  addCardTriggerText: { color: '#555', fontSize: 14 },
+  addCardTriggerText: { color: t.textMuted, fontSize: 14 },
 });
