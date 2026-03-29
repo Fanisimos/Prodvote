@@ -25,19 +25,54 @@ export async function registerForPushNotifications(userId: string) {
 
   if (finalStatus !== 'granted') return;
 
-  const token = await Notifications.getExpoPushTokenAsync();
+  try {
+    const token = await Notifications.getExpoPushTokenAsync({
+      projectId: '598ee5c0-a06a-4788-804e-45f8d2c68331',
+    });
 
-  // Store the push token in the user's profile (add push_token column if needed)
-  await supabase.from('profiles').update({
-    // push_token: token.data,  // Uncomment after adding column
-  }).eq('id', userId);
+    await supabase.from('profiles').update({
+      push_token: token.data,
+    }).eq('id', userId);
 
-  return token.data;
+    return token.data;
+  } catch (e) {
+    console.warn('Push token error:', e);
+  }
 }
 
 export async function sendLocalNotification(title: string, body: string) {
   await Notifications.scheduleNotificationAsync({
     content: { title, body },
     trigger: null,
+  });
+}
+
+export async function notifyVoteMilestone(featureTitle: string, votes: number) {
+  await sendLocalNotification(
+    `🔥 ${votes} votes!`,
+    `Your feature "${featureTitle}" just hit ${votes} votes!`
+  );
+}
+
+export async function notifyFeatureShipped(featureTitle: string) {
+  await sendLocalNotification(
+    '🎉 Feature shipped!',
+    `"${featureTitle}" that you voted for has been shipped!`
+  );
+}
+
+export async function scheduleDailyRewardReminder() {
+  if (Platform.OS === 'web') return;
+  await Notifications.cancelAllScheduledNotificationsAsync();
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: '🎡 Daily reward ready!',
+      body: 'Spin the fortune wheel to claim your free coins.',
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DAILY,
+      hour: 10,
+      minute: 0,
+    },
   });
 }

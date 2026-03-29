@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../lib/AuthContext';
 import { useTheme, Theme, tierColor, tierEmoji } from '../../lib/theme';
 import { Feature, Badge, AvatarFrame } from '../../lib/types';
+import { registerForPushNotifications, scheduleDailyRewardReminder } from '../../lib/notifications';
 
 export default function ProfileScreen() {
   const { profile, signOut, fetchProfile } = useAuthContext();
@@ -16,6 +17,9 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     if (!profile) return;
+    // Register push notifications
+    registerForPushNotifications(profile.id);
+    scheduleDailyRewardReminder();
     // Fetch user submissions
     supabase.from('features_with_details').select('*')
       .eq('user_id', profile.id).order('created_at', { ascending: false }).limit(5)
@@ -233,6 +237,10 @@ export default function ProfileScreen() {
         <TouchableOpacity style={s.quickLink} onPress={() => router.push('/(tabs)/submit' as any)}>
           <Text style={{ fontSize: 24 }}>📝</Text>
           <Text style={s.quickLinkText}>Submit</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={s.quickLink} onPress={() => router.push('/leaderboard' as any)}>
+          <Text style={{ fontSize: 24 }}>🏆</Text>
+          <Text style={s.quickLinkText}>Leaderboard</Text>
         </TouchableOpacity>
       </View>
 

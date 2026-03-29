@@ -27,6 +27,7 @@ const PRODUCTIVITY: AppItem[] = [
 
 const GAMES: AppItem[] = [
   { id: 'moon-patrol', name: 'Moon Patrol: Dark Frontier', emoji: '🚀', desc: 'Retro arcade shooter — dodge obstacles and blast aliens' },
+  { id: 'snake', name: 'Snake', emoji: '🐍', desc: 'Classic snake game — eat, grow, and don\'t hit yourself!' },
 ];
 
 export default function AppsScreen() {
@@ -99,7 +100,7 @@ export default function AppsScreen() {
 
       <View style={s.sectionHeader}>
         <Text style={s.sectionTitle}>GAMES</Text>
-        <Text style={s.sectionCount}>{GAMES.length} game</Text>
+        <Text style={s.sectionCount}>{GAMES.length} games</Text>
       </View>
 
       {GAMES.map(renderApp)}

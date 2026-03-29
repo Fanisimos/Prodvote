@@ -4,14 +4,17 @@ import {
   ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import Watermark from '../../components/Watermark';
-import { useLocalSearchParams } from 'expo-router';
+import ReactionBar from '../../components/ReactionBar';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../lib/AuthContext';
+import { notifyVoteMilestone } from '../../lib/notifications';
 import { useTheme, Theme } from '../../lib/theme';
 import { Feature, Comment } from '../../lib/types';
 
 export default function FeatureDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
   const [feature, setFeature] = useState<Feature | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [hasVoted, setHasVoted] = useState(false);
@@ -57,7 +60,12 @@ export default function FeatureDetailScreen() {
       await supabase.from('votes').insert({ user_id: session.user.id, feature_id: id, weight });
       await supabase.from('profiles').update({ votes_remaining: profile.votes_remaining - 1 }).eq('id', session.user.id);
       setHasVoted(true);
-      setFeature(prev => prev ? { ...prev, vote_count: prev.vote_count + 1 } : prev);
+      const newCount = (feature?.vote_count || 0) + 1;
+      setFeature(prev => prev ? { ...prev, vote_count: newCount } : prev);
+      // Notify the feature author if they hit a milestone
+      if (feature?.user_id === session.user.id && [10, 25, 50, 100].includes(newCount)) {
+        notifyVoteMilestone(feature.title, newCount);
+      }
     }
   }
 
@@ -97,8 +105,15 @@ export default function FeatureDetailScreen() {
           </View>
           <Text style={s.title}>{feature.title}</Text>
           <Text style={s.description}>{feature.description}</Text>
-          <Text style={s.authorText}>by {feature.author_username || 'anon'} · {timeAgo(feature.created_at)}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <TouchableOpacity onPress={() => router.push(`/user/${feature.author_username}` as any)}>
+              <Text style={[s.authorText, { color: theme.accent }]}>@{feature.author_username || 'anon'}</Text>
+            </TouchableOpacity>
+            <Text style={s.authorText}>· {timeAgo(feature.created_at)}</Text>
+          </View>
         </View>
+
+        <ReactionBar featureId={feature.id} />
 
         <TouchableOpacity style={[s.voteButton, hasVoted && s.voteButtonActive]} onPress={handleVote}>
           <Text style={[s.voteArrow, hasVoted && s.voteArrowActive]}>▲</Text>

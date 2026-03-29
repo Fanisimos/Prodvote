@@ -4,6 +4,7 @@ import {
   RefreshControl, ActivityIndicator, Alert,
 } from 'react-native';
 import Watermark from '../../components/Watermark';
+import ReactionBar from '../../components/ReactionBar';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../lib/AuthContext';
@@ -339,9 +340,12 @@ export default function TrendingScreen() {
           <Text style={s.cardTitle} numberOfLines={2}>{item.title}</Text>
           <Text style={s.cardDesc} numberOfLines={2}>{item.description}</Text>
           <View style={s.cardFooter}>
-            <Text style={s.cardAuthor}>by {item.author_username || 'anon'}</Text>
+            <TouchableOpacity onPress={() => router.push(`/user/${item.author_username}` as any)}>
+              <Text style={s.cardAuthor}>by {item.author_username || 'anon'}</Text>
+            </TouchableOpacity>
             <Text style={s.cardComments}>💬 {item.comment_count}</Text>
           </View>
+          <ReactionBar featureId={item.id} />
         </View>
       </TouchableOpacity>
     );
