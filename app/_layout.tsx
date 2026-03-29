@@ -115,6 +115,24 @@ function RootLayoutNav() {
           headerLeft: () => <BackButton />,
         }}
       />
+      <Stack.Screen
+        name="user/[username]"
+        options={{
+          title: 'Profile',
+          headerStyle,
+          headerTintColor: theme.headerText,
+          headerLeft: () => <BackButton />,
+        }}
+      />
+      <Stack.Screen
+        name="leaderboard"
+        options={{
+          title: 'Leaderboard',
+          headerStyle,
+          headerTintColor: theme.headerText,
+          headerLeft: () => <BackButton />,
+        }}
+      />
     </Stack>
   );
 }
