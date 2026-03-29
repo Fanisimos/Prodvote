@@ -76,6 +76,7 @@ function RootLayoutNav() {
           headerStyle,
           headerTintColor: theme.headerText,
           headerLeft: () => <BackButton />,
+          headerBackVisible: false,
         }}
       />
       <Stack.Screen
@@ -85,6 +86,7 @@ function RootLayoutNav() {
           headerStyle,
           headerTintColor: theme.headerText,
           headerLeft: () => <BackButton />,
+          headerBackVisible: false,
         }}
       />
       <Stack.Screen
@@ -94,6 +96,7 @@ function RootLayoutNav() {
           headerStyle,
           headerTintColor: theme.headerText,
           headerLeft: () => <BackButton />,
+          headerBackVisible: false,
         }}
       />
       <Stack.Screen name="apps" options={{ headerShown: false }} />
@@ -104,6 +107,7 @@ function RootLayoutNav() {
           headerStyle,
           headerTintColor: theme.headerText,
           headerLeft: () => <BackButton />,
+          headerBackVisible: false,
         }}
       />
       <Stack.Screen
@@ -113,15 +117,17 @@ function RootLayoutNav() {
           headerStyle,
           headerTintColor: theme.headerText,
           headerLeft: () => <BackButton />,
+          headerBackVisible: false,
         }}
       />
       <Stack.Screen
         name="user/[username]"
         options={{
-          title: 'Profile',
+          title: '',
           headerStyle,
           headerTintColor: theme.headerText,
           headerLeft: () => <BackButton />,
+          headerBackVisible: false,
         }}
       />
       <Stack.Screen
