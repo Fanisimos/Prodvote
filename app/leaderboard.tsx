@@ -4,6 +4,7 @@ import {
   TouchableOpacity, RefreshControl,
 } from 'react-native';
 import Watermark from '../components/Watermark';
+import UserAvatar from '../components/UserAvatar';
 import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { useTheme, Theme, tierColor, tierEmoji } from '../lib/theme';
@@ -13,6 +14,7 @@ type Tab = 'voters' | 'submitters' | 'streaks';
 interface LeaderEntry {
   username: string;
   tier: string;
+  avatar_url: string | null;
   value: number;
   label: string;
 }
@@ -44,12 +46,12 @@ export default function LeaderboardScreen() {
 
         const { data: profiles } = await supabase
           .from('profiles')
-          .select('id, username, tier')
+          .select('id, username, tier, avatar_url')
           .in('id', topIds.map(([id]) => id));
 
         data = topIds.map(([id, count]) => {
           const p = profiles?.find(p => p.id === id);
-          return { username: p?.username || 'anon', tier: p?.tier || 'free', value: count, label: 'votes this week' };
+          return { username: p?.username || 'anon', tier: p?.tier || 'free', avatar_url: p?.avatar_url || null, value: count, label: 'votes this week' };
         });
       }
     } else if (tab === 'submitters') {
@@ -64,24 +66,25 @@ export default function LeaderboardScreen() {
 
         const { data: profiles } = await supabase
           .from('profiles')
-          .select('id, username, tier')
+          .select('id, username, tier, avatar_url')
           .in('id', topIds.map(([id]) => id));
 
         data = topIds.map(([id, score]) => {
           const p = profiles?.find(p => p.id === id);
-          return { username: p?.username || 'anon', tier: p?.tier || 'free', value: score, label: 'total votes received' };
+          return { username: p?.username || 'anon', tier: p?.tier || 'free', avatar_url: p?.avatar_url || null, value: score, label: 'total votes received' };
         });
       }
     } else {
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('username, tier, login_streak')
+        .select('username, tier, avatar_url, login_streak')
         .order('login_streak', { ascending: false })
         .limit(10);
 
       data = (profiles || []).map(p => ({
         username: p.username,
         tier: p.tier,
+        avatar_url: p.avatar_url || null,
         value: p.login_streak,
         label: 'day streak',
       }));
@@ -149,6 +152,7 @@ export default function LeaderboardScreen() {
                 activeOpacity={0.7}
               >
                 <Text style={s.medal}>{medalEmoji(i)}</Text>
+                <UserAvatar username={entry.username} avatarUrl={entry.avatar_url} size={36} />
                 <View style={s.entryInfo}>
                   <View style={s.entryNameRow}>
                     <Text style={s.entryUsername}>@{entry.username}</Text>

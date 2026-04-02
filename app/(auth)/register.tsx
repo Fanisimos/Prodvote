@@ -3,14 +3,17 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, Alert, ActivityIndicator,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuthContext } from '../../lib/AuthContext';
 import { useTheme, Theme } from '../../lib/theme';
+import { supabase } from '../../lib/supabase';
 
 export default function RegisterScreen() {
+  const { ref } = useLocalSearchParams<{ ref?: string }>();
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [referralCode, setReferralCode] = useState(ref || '');
   const [loading, setLoading] = useState(false);
   const { signUp } = useAuthContext();
   const router = useRouter();
@@ -31,14 +34,27 @@ export default function RegisterScreen() {
     }
     setLoading(true);
     const { error } = await signUp(email.trim(), password, username.trim());
-    setLoading(false);
     if (error) {
+      setLoading(false);
       Alert.alert('Registration Failed', error.message);
-    } else {
-      Alert.alert('Success', 'Account created! You can now sign in.', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+      return;
     }
+
+    // Apply referral code if provided
+    if (referralCode.trim()) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        await supabase.rpc('apply_referral_reward', {
+          p_referral_code: referralCode.trim().toUpperCase(),
+          p_new_user_id: session.user.id,
+        });
+      }
+    }
+
+    setLoading(false);
+    Alert.alert('Success', 'Account created! You can now sign in.', [
+      { text: 'OK', onPress: () => router.back() },
+    ]);
   }
 
   const s = styles(theme);
@@ -78,6 +94,15 @@ export default function RegisterScreen() {
             value={password}
             onChangeText={setPassword}
           />
+          <TextInput
+            style={[s.input, s.referralInput]}
+            placeholder="Referral code (optional)"
+            placeholderTextColor={theme.textMuted}
+            autoCapitalize="characters"
+            value={referralCode}
+            onChangeText={setReferralCode}
+            maxLength={10}
+          />
           <TouchableOpacity style={s.button} onPress={handleRegister} disabled={loading}>
             {loading ? (
               <ActivityIndicator color="#fff" />
@@ -115,4 +140,5 @@ const styles = (t: Theme) => StyleSheet.create({
   buttonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
   linkText: { color: t.textMuted, textAlign: 'center', marginTop: 16, fontSize: 15 },
   linkBold: { color: t.accent, fontWeight: '600' },
+  referralInput: { borderStyle: 'dashed' },
 });

@@ -1,18 +1,21 @@
 import { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { useTheme, Theme } from '../../lib/theme';
 
 const INHALE_DURATION = 4000;
 const EXHALE_DURATION = 4000;
 const CYCLE_DURATION = INHALE_DURATION + EXHALE_DURATION;
 
 export default function BreatheScreen() {
+  const { theme } = useTheme();
   const [active, setActive] = useState(false);
   const [phase, setPhase] = useState<'inhale' | 'exhale'>('inhale');
   const [cycleCount, setCycleCount] = useState(0);
+  const [countdown, setCountdown] = useState(4);
   const scaleAnim = useRef(new Animated.Value(0.5)).current;
   const opacityAnim = useRef(new Animated.Value(0.3)).current;
   const animRef = useRef<Animated.CompositeAnimation | null>(null);
-  const phaseInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+  const countdownInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (active) {
@@ -61,15 +64,25 @@ export default function BreatheScreen() {
 
   function startPhaseTracking() {
     setPhase('inhale');
+    setCountdown(4);
+    let secondsInPhase = 0;
     let isInhale = true;
 
-    phaseInterval.current = setInterval(() => {
-      isInhale = !isInhale;
-      setPhase(isInhale ? 'inhale' : 'exhale');
-      if (isInhale) {
-        setCycleCount((prev) => prev + 1);
+    countdownInterval.current = setInterval(() => {
+      secondsInPhase++;
+      if (secondsInPhase >= 4) {
+        // Switch phase
+        secondsInPhase = 0;
+        isInhale = !isInhale;
+        setPhase(isInhale ? 'inhale' : 'exhale');
+        setCountdown(4);
+        if (isInhale) {
+          setCycleCount((prev) => prev + 1);
+        }
+      } else {
+        setCountdown(4 - secondsInPhase);
       }
-    }, INHALE_DURATION);
+    }, 1000);
   }
 
   function stopAll() {
@@ -77,12 +90,13 @@ export default function BreatheScreen() {
       animRef.current.stop();
       animRef.current = null;
     }
-    if (phaseInterval.current) {
-      clearInterval(phaseInterval.current);
-      phaseInterval.current = null;
+    if (countdownInterval.current) {
+      clearInterval(countdownInterval.current);
+      countdownInterval.current = null;
     }
     scaleAnim.setValue(0.5);
     opacityAnim.setValue(0.3);
+    setCountdown(4);
   }
 
   function handleToggle() {
@@ -95,21 +109,22 @@ export default function BreatheScreen() {
     }
   }
 
-  const phaseColor = phase === 'inhale' ? '#7c5cfc' : '#34d399';
+  const phaseColor = phase === 'inhale' ? theme.accent : '#34d399';
+  const s = styles(theme);
 
   return (
-    <View style={styles.container}>
+    <View style={s.container}>
       {/* Phase text */}
-      <Text style={[styles.phaseText, { color: phaseColor }]}>
+      <Text style={[s.phaseText, { color: phaseColor }]}>
         {active ? (phase === 'inhale' ? 'Breathe In' : 'Breathe Out') : 'Ready'}
       </Text>
 
       {/* Animated circle */}
-      <View style={styles.circleContainer}>
+      <View style={s.circleContainer}>
         {/* Outer glow ring */}
         <Animated.View
           style={[
-            styles.outerRing,
+            s.outerRing,
             {
               transform: [{ scale: scaleAnim }],
               opacity: opacityAnim,
@@ -120,7 +135,7 @@ export default function BreatheScreen() {
         {/* Inner circle */}
         <Animated.View
           style={[
-            styles.innerCircle,
+            s.innerCircle,
             {
               transform: [{ scale: scaleAnim }],
               backgroundColor: phaseColor + '22',
@@ -128,32 +143,32 @@ export default function BreatheScreen() {
             },
           ]}
         >
-          <Text style={[styles.circleText, { color: phaseColor }]}>
-            {active ? (phase === 'inhale' ? '4s' : '4s') : ''}
+          <Text style={[s.circleText, { color: phaseColor }]}>
+            {active ? `${countdown}s` : ''}
           </Text>
         </Animated.View>
       </View>
 
       {/* Cycle count */}
       {active && (
-        <Text style={styles.cycleText}>
+        <Text style={s.cycleText}>
           Cycles: {cycleCount}
         </Text>
       )}
 
       {/* Control button */}
       <TouchableOpacity
-        style={[styles.controlBtn, active && styles.controlBtnActive]}
+        style={[s.controlBtn, active && s.controlBtnActive]}
         onPress={handleToggle}
       >
-        <Text style={styles.controlBtnText}>
+        <Text style={s.controlBtnText}>
           {active ? 'Stop' : 'Start'}
         </Text>
       </TouchableOpacity>
 
       {/* Instructions */}
       {!active && (
-        <Text style={styles.instructions}>
+        <Text style={s.instructions}>
           4 seconds inhale, 4 seconds exhale.{'\n'}Find your calm.
         </Text>
       )}
@@ -161,9 +176,9 @@ export default function BreatheScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = (t: Theme) => StyleSheet.create({
   container: {
-    flex: 1, backgroundColor: '#0a0a0f',
+    flex: 1, backgroundColor: t.bg,
     alignItems: 'center', justifyContent: 'center', padding: 24,
   },
   phaseText: {
@@ -183,14 +198,14 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   circleText: { fontSize: 32, fontWeight: '800' },
-  cycleText: { fontSize: 14, color: '#888', marginBottom: 32 },
+  cycleText: { fontSize: 14, color: t.textMuted, marginBottom: 32 },
   controlBtn: {
-    backgroundColor: '#7c5cfc', borderRadius: 30,
+    backgroundColor: t.accent, borderRadius: 30,
     paddingHorizontal: 48, paddingVertical: 16,
   },
   controlBtnActive: { backgroundColor: '#ff4d6a' },
   controlBtnText: { color: '#fff', fontWeight: '700', fontSize: 18 },
   instructions: {
-    textAlign: 'center', color: '#555', fontSize: 14, marginTop: 32, lineHeight: 22,
+    textAlign: 'center', color: t.textMuted, fontSize: 14, marginTop: 32, lineHeight: 22,
   },
 });

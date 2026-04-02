@@ -1,12 +1,27 @@
 import { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView, Share, Platform } from 'react-native';
 import Watermark from '../../components/Watermark';
+import UserAvatar from '../../components/UserAvatar';
 import { router } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../lib/AuthContext';
 import { useTheme, Theme, tierColor, tierEmoji } from '../../lib/theme';
 import { Feature, Badge, AvatarFrame } from '../../lib/types';
 import { registerForPushNotifications, scheduleDailyRewardReminder } from '../../lib/notifications';
+import * as StoreReview from 'expo-store-review';
+
+async function maybePromptRating(userId: string) {
+  try {
+    const isAvailable = await StoreReview.isAvailableAsync();
+    if (!isAvailable) return;
+    // Small delay so profile page loads first
+    setTimeout(async () => {
+      await StoreReview.requestReview();
+      // Mark as prompted so we never ask again
+      await supabase.from('profiles').update({ has_been_prompted_rating: true }).eq('id', userId);
+    }, 2000);
+  } catch {}
+}
 
 export default function ProfileScreen() {
   const { profile, signOut, fetchProfile } = useAuthContext();
@@ -32,6 +47,11 @@ export default function ProfileScreen() {
     // Fetch owned frames
     supabase.from('user_avatar_frames').select('*, frame:frame_id(*)').eq('user_id', profile.id)
       .then(({ data }) => setOwnedFrames((data || []).map((d: any) => ({ ...d.frame, owned: true }))));
+
+    // Rating prompt — only if not already prompted, has 3+ day streak or 3+ submissions
+    if (!profile.has_been_prompted_rating && profile.login_streak >= 3) {
+      maybePromptRating(profile.id);
+    }
   }, [profile?.id]);
 
   const [rewardCountdown, setRewardCountdown] = useState<string | null>(null);
@@ -108,6 +128,17 @@ export default function ProfileScreen() {
     Alert.alert('Set Active Frame', 'Choose a frame', [...buttons, { text: 'Cancel', onPress: () => {} }]);
   }
 
+  async function handleShare() {
+    const code = profile?.referral_code || '';
+    const message = `Join me on Prodvote! Use my referral code ${code} to get started. We both earn 500 coins! 🚀\n\nhttps://prodvote.com/invite?ref=${code}`;
+    try {
+      await Share.share({
+        message,
+        title: 'Invite to Prodvote',
+      });
+    } catch {}
+  }
+
   function handleSignOut() {
     Alert.alert('Sign Out', 'Are you sure?', [
       { text: 'Cancel', style: 'cancel' },
@@ -127,11 +158,14 @@ export default function ProfileScreen() {
 
       {/* Avatar Section */}
       <View style={s.avatarSection}>
-        <View style={[s.avatarRing, { borderColor: profile.active_frame?.color || tColor }]}>
-          <View style={s.avatar}>
-            <Text style={s.avatarText}>{profile.username.slice(0, 2).toUpperCase()}</Text>
-          </View>
-        </View>
+        <UserAvatar
+          username={profile.username}
+          avatarUrl={profile.avatar_url}
+          frameColor={profile.active_frame?.color || tColor}
+          frameAnimation={profile.active_frame?.animation_type || null}
+          badgeEmoji={(profile.active_badge as any)?.emoji || null}
+          size={86}
+        />
         <Text style={s.username}>@{profile.username}</Text>
         <TouchableOpacity onPress={() => router.push('/apps/edit-profile' as any)}>
           <Text style={s.editLink}>Edit Profile</Text>
@@ -244,6 +278,24 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Invite Friends */}
+      <TouchableOpacity style={s.inviteCard} onPress={handleShare}>
+        <View style={s.inviteLeft}>
+          <Text style={{ fontSize: 28 }}>🎁</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={s.inviteTitle}>Invite Friends</Text>
+            <Text style={s.inviteDesc}>You both get 500 coins when they join!</Text>
+          </View>
+        </View>
+        <View style={s.inviteCodeBox}>
+          <Text style={s.inviteCodeLabel}>YOUR CODE</Text>
+          <Text style={s.inviteCode}>{profile.referral_code || '...'}</Text>
+        </View>
+        <View style={s.inviteShareBtn}>
+          <Text style={s.inviteShareText}>Share Invite Link</Text>
+        </View>
+      </TouchableOpacity>
+
       {/* Your Badges */}
       <View style={s.sectionRow}>
         <Text style={s.sectionTitle}>YOUR BADGES</Text>
@@ -275,12 +327,18 @@ export default function ProfileScreen() {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
           {ownedFrames.map(f => (
             <View key={f.id} style={s.ownedFrame}>
-              {profile.active_frame_id === f.id && (
-                <View style={s.activeTag}><Text style={s.activeTagText}>ACTIVE</Text></View>
-              )}
-              <View style={[s.frameCircle, { borderColor: f.color }]}>
-                <Text style={{ fontSize: 20 }}>👤</Text>
+              <View style={s.activeTagSlot}>
+                {profile.active_frame_id === f.id && (
+                  <View style={s.activeTag}><Text style={s.activeTagText}>ACTIVE</Text></View>
+                )}
               </View>
+              <UserAvatar
+                username={profile.username}
+                avatarUrl={profile.avatar_url}
+                frameColor={f.color}
+                frameAnimation={f.animation_type}
+                size={40}
+              />
               <Text style={s.ownedBadgeName}>{f.name}</Text>
             </View>
           ))}
@@ -396,8 +454,9 @@ const styles = (t: Theme) => StyleSheet.create({
     backgroundColor: t.card, borderRadius: 12, padding: 12, marginRight: 10,
     alignItems: 'center', borderWidth: 1, borderColor: t.success + '44', minWidth: 80,
   },
+  activeTagSlot: { height: 22, justifyContent: 'center', alignItems: 'center' },
   activeTag: {
-    backgroundColor: t.success, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, marginBottom: 6,
+    backgroundColor: t.success, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4,
   },
   activeTagText: { color: '#fff', fontSize: 9, fontWeight: '800' },
   frameCircle: { width: 48, height: 48, borderRadius: 24, borderWidth: 3, alignItems: 'center', justifyContent: 'center', backgroundColor: t.surface },
@@ -420,4 +479,21 @@ const styles = (t: Theme) => StyleSheet.create({
     marginTop: 10, borderWidth: 1, borderColor: t.danger + '44',
   },
   signOutText: { color: t.danger, fontSize: 16, fontWeight: '700' },
+  inviteCard: {
+    backgroundColor: t.card, borderRadius: 16, padding: 18,
+    marginBottom: 20, borderWidth: 1, borderColor: t.accent + '44',
+  },
+  inviteLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
+  inviteTitle: { fontSize: 17, fontWeight: '700', color: t.text },
+  inviteDesc: { fontSize: 13, color: t.textMuted, marginTop: 2 },
+  inviteCodeBox: {
+    backgroundColor: t.surface, borderRadius: 10, padding: 12,
+    alignItems: 'center', marginBottom: 12,
+  },
+  inviteCodeLabel: { fontSize: 10, fontWeight: '800', color: t.textMuted, letterSpacing: 1 },
+  inviteCode: { fontSize: 22, fontWeight: '800', color: t.accent, letterSpacing: 2, marginTop: 2 },
+  inviteShareBtn: {
+    backgroundColor: t.accent, borderRadius: 12, paddingVertical: 12, alignItems: 'center',
+  },
+  inviteShareText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 });

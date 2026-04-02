@@ -3,11 +3,12 @@ import {
   View, Text, FlatList, TextInput, TouchableOpacity, StyleSheet,
   ActivityIndicator, KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../lib/AuthContext';
 import { useTheme, Theme } from '../../lib/theme';
 import { Message } from '../../lib/types';
+import UserAvatar from '../../components/UserAvatar';
 
 export default function ChatDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -23,12 +24,17 @@ export default function ChatDetailScreen() {
     setLoading(true);
     const { data } = await supabase
       .from('messages')
-      .select('*, profiles(username, avatar_url, tier)')
+      .select('*, profiles(username, avatar_url, tier, active_frame:active_frame_id(animation_type, color))')
       .eq('channel_id', id)
       .order('created_at', { ascending: false })
       .limit(100);
     const mapped = (data || []).map((m: any) => ({
-      ...m, username: m.profiles?.username, avatar_url: m.profiles?.avatar_url, tier: m.profiles?.tier,
+      ...m,
+      username: m.profiles?.username,
+      avatar_url: m.profiles?.avatar_url,
+      tier: m.profiles?.tier,
+      frame_animation: m.profiles?.active_frame?.animation_type || null,
+      frame_color: m.profiles?.active_frame?.color || null,
     }));
     setMessages(mapped);
     setLoading(false);
@@ -42,8 +48,15 @@ export default function ChatDetailScreen() {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `channel_id=eq.${id}` },
         async (payload) => {
           const newMsg = payload.new as Message;
-          const { data: profileData } = await supabase.from('profiles').select('username, avatar_url, tier').eq('id', newMsg.user_id).single();
-          const enriched: Message = { ...newMsg, username: profileData?.username, avatar_url: profileData?.avatar_url, tier: profileData?.tier };
+          const { data: profileData } = await supabase.from('profiles').select('username, avatar_url, tier, active_frame:active_frame_id(animation_type, color)').eq('id', newMsg.user_id).single();
+          const enriched: Message = {
+            ...newMsg,
+            username: profileData?.username,
+            avatar_url: profileData?.avatar_url,
+            tier: profileData?.tier,
+            frame_animation: (profileData as any)?.active_frame?.animation_type || null,
+            frame_color: (profileData as any)?.active_frame?.color || null,
+          };
           setMessages(prev => [enriched, ...prev]);
         })
       .subscribe();
@@ -91,12 +104,21 @@ export default function ChatDetailScreen() {
         renderItem={({ item }) => {
           const isMe = item.user_id === session?.user.id;
           return (
-            <View style={[s.bubble, isMe && s.bubbleMe]}>
-              <View style={s.bubbleHeader}>
-                <Text style={[s.bubbleUser, isMe && { color: theme.accent }]}>{item.username || 'anon'}</Text>
-                <Text style={s.bubbleTime}>{timeAgo(item.created_at)}</Text>
+            <View style={[s.msgRow, isMe && s.msgRowMe]}>
+              <UserAvatar
+                username={item.username || 'anon'}
+                avatarUrl={item.avatar_url}
+                frameColor={item.frame_color}
+                frameAnimation={item.frame_animation}
+                size={32}
+              />
+              <View style={[s.bubble, isMe && s.bubbleMe]}>
+                <View style={s.bubbleHeader}>
+                  <Text style={[s.bubbleUser, isMe && { color: theme.accent }]}>{item.username || 'anon'}</Text>
+                  <Text style={s.bubbleTime}>{timeAgo(item.created_at)}</Text>
+                </View>
+                <Text style={s.bubbleBody}>{item.body}</Text>
               </View>
-              <Text style={s.bubbleBody}>{item.body}</Text>
             </View>
           );
         }}
@@ -128,11 +150,13 @@ const styles = (t: Theme) => StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: t.bg },
   empty: { alignItems: 'center', marginTop: 60, transform: [{ scaleY: -1 }] },
   emptyText: { fontSize: 16, color: t.textMuted, marginTop: 12 },
+  msgRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginBottom: 8, alignSelf: 'flex-start', maxWidth: '85%' },
+  msgRowMe: { alignSelf: 'flex-end', flexDirection: 'row-reverse' },
   bubble: {
-    backgroundColor: t.card, borderRadius: 14, padding: 12, marginBottom: 8,
-    borderWidth: 1, borderColor: t.cardBorder, maxWidth: '85%', alignSelf: 'flex-start',
+    flex: 1, backgroundColor: t.card, borderRadius: 14, padding: 12,
+    borderWidth: 1, borderColor: t.cardBorder,
   },
-  bubbleMe: { alignSelf: 'flex-end', backgroundColor: t.accentLight, borderColor: t.accent + '33' },
+  bubbleMe: { backgroundColor: t.accentLight, borderColor: t.accent + '33' },
   bubbleHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4, gap: 12 },
   bubbleUser: { fontSize: 13, fontWeight: '600', color: t.textSecondary },
   bubbleTime: { fontSize: 11, color: t.textMuted },

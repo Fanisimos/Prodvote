@@ -3,6 +3,7 @@ import {
   View, Text, ScrollView, StyleSheet, ActivityIndicator, TouchableOpacity,
 } from 'react-native';
 import Watermark from '../../components/Watermark';
+import UserAvatar from '../../components/UserAvatar';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useTheme, Theme, tierColor, tierEmoji } from '../../lib/theme';
@@ -12,6 +13,8 @@ interface PublicProfile extends Profile {
   badges: Badge[];
   topFeatures: Feature[];
   totalVotesReceived: number;
+  frameColor?: string | null;
+  frameAnimation?: string | null;
 }
 
 export default function UserProfileScreen() {
@@ -33,7 +36,7 @@ export default function UserProfileScreen() {
 
     if (!profile) { setLoading(false); return; }
 
-    const [featuresRes, badgesRes, votesRes] = await Promise.all([
+    const [featuresRes, badgesRes, votesRes, frameRes] = await Promise.all([
       supabase.from('features_with_details').select('*')
         .eq('user_id', profile.id)
         .order('vote_count', { ascending: false })
@@ -41,10 +44,15 @@ export default function UserProfileScreen() {
       supabase.from('user_badges').select('*, badge:badges(*)').eq('user_id', profile.id),
       supabase.from('votes').select('id', { count: 'exact', head: true })
         .eq('user_id', profile.id),
+      profile.active_frame_id
+        ? supabase.from('avatar_frames').select('color, animation_type').eq('id', profile.active_frame_id).single()
+        : Promise.resolve({ data: null }),
     ]);
 
     setUser({
       ...profile,
+      frameColor: frameRes.data?.color || null,
+      frameAnimation: frameRes.data?.animation_type || null,
       badges: (badgesRes.data || []).map((ub: any) => ub.badge).filter(Boolean),
       topFeatures: featuresRes.data || [],
       totalVotesReceived: featuresRes.data?.reduce((sum: number, f: Feature) => sum + f.vote_count, 0) || 0,
@@ -75,13 +83,14 @@ export default function UserProfileScreen() {
 
         {/* Avatar + Identity */}
         <View style={s.heroCard}>
-          <View style={[s.avatarRing, { borderColor: tc }]}>
-            <View style={s.avatarInner}>
-              <Text style={s.avatarEmoji}>
-                {user.active_badge ? (user.active_badge as any).emoji : '👤'}
-              </Text>
-            </View>
-          </View>
+          <UserAvatar
+            username={user.username}
+            avatarUrl={user.avatar_url}
+            frameColor={user.frameColor || tc}
+            frameAnimation={user.frameAnimation}
+            badgeEmoji={user.active_badge ? (user.active_badge as any).emoji : null}
+            size={86}
+          />
           <Text style={s.username}>@{user.username}</Text>
           {user.bio && <Text style={s.bio}>{user.bio}</Text>}
           <View style={[s.tierPill, { backgroundColor: tc + '22' }]}>

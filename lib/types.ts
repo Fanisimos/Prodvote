@@ -25,6 +25,9 @@ export interface Profile {
   subscription_started_at: string | null;
   last_monthly_grant_at: string | null;
   last_vote_reset_at: string | null;
+  referral_code: string | null;
+  referred_by: string | null;
+  has_been_prompted_rating: boolean;
   created_at: string;
 }
 
@@ -53,6 +56,8 @@ export interface Feature {
   author_username?: string;
   author_avatar?: string | null;
   author_tier?: Tier;
+  author_frame_animation?: string | null;
+  author_frame_color?: string | null;
   category_name?: string;
   category_color?: string;
   category_icon?: string;
@@ -87,7 +92,7 @@ export interface Badge {
   color: string;
   description: string | null;
   price: number;
-  is_premium: boolean;
+  is_active: boolean;
   created_at: string;
 }
 
@@ -141,6 +146,8 @@ export interface Message {
   avatar_url?: string | null;
   tier?: Tier;
   active_badge_emoji?: string | null;
+  frame_animation?: string | null;
+  frame_color?: string | null;
 }
 
 export interface CoinReward {
@@ -204,13 +211,34 @@ export interface KanbanCard {
   created_at: string;
 }
 
+export interface AwardType {
+  id: number;
+  name: string;
+  emoji: string;
+  description: string;
+  coin_cost: number;
+  animation: string;
+  color: string;
+  sort_order: number;
+}
+
 export interface FeatureAward {
   id: string;
   feature_id: string;
-  badge_id: number;
+  award_type_id: number;
   giver_user_id: string;
   created_at: string;
-  badge?: Badge;
+  award_type?: AwardType;
+}
+
+export interface FeatureAwardCount {
+  feature_id: string;
+  award_type_id: number;
+  name: string;
+  emoji: string;
+  animation: string;
+  color: string;
+  count: number;
 }
 
 export interface CommentAward {

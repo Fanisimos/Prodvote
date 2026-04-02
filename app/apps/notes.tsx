@@ -6,9 +6,11 @@ import {
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../lib/AuthContext';
 import { Note } from '../../lib/types';
+import { useTheme, Theme } from '../../lib/theme';
 
 export default function NotesScreen() {
   const { session } = useAuthContext();
+  const { theme } = useTheme();
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
@@ -97,83 +99,85 @@ export default function NotesScreen() {
     return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
   }
 
+  const s = styles(theme);
+
   return (
-    <View style={styles.container}>
+    <View style={s.container}>
       <FlatList
         data={notes}
         keyExtractor={(item) => item.id}
         numColumns={2}
         columnWrapperStyle={{ gap: 12 }}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchNotes} tintColor="#7c5cfc" />}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchNotes} tintColor={theme.accent} />}
         contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
         ListEmptyComponent={
           !loading ? (
-            <View style={styles.empty}>
-              <Text style={styles.emptyIcon}>📝</Text>
-              <Text style={styles.emptyText}>No notes yet</Text>
-              <Text style={styles.emptySubtext}>Tap + to create one</Text>
+            <View style={s.empty}>
+              <Text style={s.emptyIcon}>📝</Text>
+              <Text style={s.emptyText}>No notes yet</Text>
+              <Text style={s.emptySubtext}>Tap + to create one</Text>
             </View>
           ) : null
         }
         renderItem={({ item }) => (
           <TouchableOpacity
-            style={styles.noteCard}
+            style={s.noteCard}
             onPress={() => openEdit(item)}
             onLongPress={() => handleDelete(item.id)}
           >
-            {item.title && <Text style={styles.noteTitle} numberOfLines={2}>{item.title}</Text>}
-            {item.body && <Text style={styles.noteBody} numberOfLines={5}>{item.body}</Text>}
-            <Text style={styles.noteDate}>{formatDate(item.updated_at)}</Text>
+            {item.title && <Text style={s.noteTitle} numberOfLines={2}>{item.title}</Text>}
+            {item.body && <Text style={s.noteBody} numberOfLines={5}>{item.body}</Text>}
+            <Text style={s.noteDate}>{formatDate(item.updated_at)}</Text>
           </TouchableOpacity>
         )}
       />
 
       {/* FAB */}
-      <TouchableOpacity style={styles.fab} onPress={openNew}>
-        <Text style={styles.fabText}>+</Text>
+      <TouchableOpacity style={s.fab} onPress={openNew}>
+        <Text style={s.fabText}>+</Text>
       </TouchableOpacity>
 
       {/* Note Modal */}
       <Modal visible={modalVisible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>
+        <View style={s.modalOverlay}>
+          <View style={s.modalContent}>
+            <Text style={s.modalTitle}>
               {editingNote ? 'Edit Note' : 'New Note'}
             </Text>
             <TextInput
-              style={styles.input}
+              style={s.input}
               placeholder="Title"
-              placeholderTextColor="#666"
+              placeholderTextColor={theme.textMuted}
               value={title}
               onChangeText={setTitle}
               maxLength={100}
             />
             <TextInput
-              style={[styles.input, styles.inputMultiline]}
+              style={[s.input, s.inputMultiline]}
               placeholder="Write something..."
-              placeholderTextColor="#666"
+              placeholderTextColor={theme.textMuted}
               value={body}
               onChangeText={setBody}
               multiline
               numberOfLines={8}
               maxLength={5000}
             />
-            <View style={styles.modalActions}>
+            <View style={s.modalActions}>
               <TouchableOpacity
-                style={styles.cancelBtn}
+                style={s.cancelBtn}
                 onPress={() => { setModalVisible(false); setEditingNote(null); setTitle(''); setBody(''); }}
               >
-                <Text style={styles.cancelBtnText}>Cancel</Text>
+                <Text style={s.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.saveBtn, saving && { opacity: 0.4 }]}
+                style={[s.saveBtn, saving && { opacity: 0.4 }]}
                 onPress={handleSave}
                 disabled={saving}
               >
                 {saving ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
-                  <Text style={styles.saveBtnText}>Save</Text>
+                  <Text style={s.saveBtnText}>Save</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -184,24 +188,24 @@ export default function NotesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0f' },
+const styles = (t: Theme) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: t.bg },
   empty: { alignItems: 'center', marginTop: 60 },
   emptyIcon: { fontSize: 48, marginBottom: 12 },
-  emptyText: { fontSize: 16, color: '#888' },
-  emptySubtext: { fontSize: 13, color: '#555', marginTop: 4 },
+  emptyText: { fontSize: 16, color: t.textMuted },
+  emptySubtext: { fontSize: 13, color: t.textMuted, marginTop: 4 },
   noteCard: {
-    flex: 1, backgroundColor: '#1a1a2e', borderRadius: 14, padding: 14,
-    marginBottom: 12, borderWidth: 1, borderColor: '#2a2a3e',
+    flex: 1, backgroundColor: t.card, borderRadius: 14, padding: 14,
+    marginBottom: 12, borderWidth: 1, borderColor: t.cardBorder,
   },
-  noteTitle: { fontSize: 15, fontWeight: '700', color: '#fff', marginBottom: 6 },
-  noteBody: { fontSize: 13, color: '#aaa', lineHeight: 18, marginBottom: 8 },
-  noteDate: { fontSize: 11, color: '#555' },
+  noteTitle: { fontSize: 15, fontWeight: '700', color: t.text, marginBottom: 6 },
+  noteBody: { fontSize: 13, color: t.textMuted, lineHeight: 18, marginBottom: 8 },
+  noteDate: { fontSize: 11, color: t.textMuted },
   fab: {
     position: 'absolute', bottom: 24, right: 24,
     width: 56, height: 56, borderRadius: 28,
-    backgroundColor: '#7c5cfc', alignItems: 'center', justifyContent: 'center',
-    elevation: 5, shadowColor: '#7c5cfc', shadowOffset: { width: 0, height: 4 },
+    backgroundColor: t.accent, alignItems: 'center', justifyContent: 'center',
+    elevation: 5, shadowColor: t.accent, shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3, shadowRadius: 8,
   },
   fabText: { fontSize: 28, color: '#fff', fontWeight: '600', marginTop: -2 },
@@ -209,24 +213,24 @@ const styles = StyleSheet.create({
     flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#1a1a2e', borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    backgroundColor: t.card, borderTopLeftRadius: 24, borderTopRightRadius: 24,
     padding: 24, paddingBottom: 40,
   },
-  modalTitle: { fontSize: 20, fontWeight: '700', color: '#fff', marginBottom: 16 },
+  modalTitle: { fontSize: 20, fontWeight: '700', color: t.text, marginBottom: 16 },
   input: {
-    backgroundColor: '#0a0a0f', borderRadius: 12, padding: 14,
-    color: '#fff', fontSize: 15, borderWidth: 1, borderColor: '#2a2a3e', marginBottom: 12,
+    backgroundColor: t.inputBg, borderRadius: 12, padding: 14,
+    color: t.text, fontSize: 15, borderWidth: 1, borderColor: t.inputBorder, marginBottom: 12,
   },
   inputMultiline: { minHeight: 160, textAlignVertical: 'top' },
   modalActions: { flexDirection: 'row', gap: 12, marginTop: 8 },
   cancelBtn: {
     flex: 1, padding: 14, borderRadius: 12, alignItems: 'center',
-    backgroundColor: '#2a2a3e',
+    backgroundColor: t.surface,
   },
-  cancelBtnText: { color: '#888', fontWeight: '600', fontSize: 15 },
+  cancelBtnText: { color: t.textMuted, fontWeight: '600', fontSize: 15 },
   saveBtn: {
     flex: 1, padding: 14, borderRadius: 12, alignItems: 'center',
-    backgroundColor: '#7c5cfc',
+    backgroundColor: t.accent,
   },
   saveBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
 });

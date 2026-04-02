@@ -6,17 +6,13 @@ import {
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../lib/AuthContext';
 import { Plan } from '../../lib/types';
+import { useTheme, Theme } from '../../lib/theme';
 
 const STATUS_OPTIONS = ['active', 'completed', 'archived'] as const;
 
-const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  active: { label: 'Active', color: '#7c5cfc' },
-  completed: { label: 'Completed', color: '#34d399' },
-  archived: { label: 'Archived', color: '#888' },
-};
-
 export default function PlansScreen() {
   const { session } = useAuthContext();
+  const { theme } = useTheme();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>('active');
@@ -25,6 +21,12 @@ export default function PlansScreen() {
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [saving, setSaving] = useState(false);
+
+  const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+    active: { label: 'Active', color: theme.accent },
+    completed: { label: 'Completed', color: '#34d399' },
+    archived: { label: 'Archived', color: theme.textMuted },
+  };
 
   const fetchPlans = useCallback(async () => {
     if (!session) return;
@@ -93,20 +95,22 @@ export default function PlansScreen() {
     return { label, isPast };
   }
 
+  const s = styles(theme);
+
   return (
-    <View style={styles.container}>
+    <View style={s.container}>
       {/* Filter tabs */}
-      <View style={styles.filterRow}>
-        {STATUS_OPTIONS.map((s) => {
-          const config = STATUS_CONFIG[s];
-          const isActive = filter === s;
+      <View style={s.filterRow}>
+        {STATUS_OPTIONS.map((st) => {
+          const config = STATUS_CONFIG[st];
+          const isActive = filter === st;
           return (
             <TouchableOpacity
-              key={s}
-              style={[styles.filterTab, isActive && { backgroundColor: config.color + '22', borderColor: config.color }]}
-              onPress={() => setFilter(s)}
+              key={st}
+              style={[s.filterTab, isActive && { backgroundColor: config.color + '22', borderColor: config.color }]}
+              onPress={() => setFilter(st)}
             >
-              <Text style={[styles.filterText, isActive && { color: config.color }]}>
+              <Text style={[s.filterText, isActive && { color: config.color }]}>
                 {config.label}
               </Text>
             </TouchableOpacity>
@@ -117,13 +121,13 @@ export default function PlansScreen() {
       <FlatList
         data={plans}
         keyExtractor={(item) => item.id}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchPlans} tintColor="#7c5cfc" />}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchPlans} tintColor={theme.accent} />}
         contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: 100 }}
         ListEmptyComponent={
           !loading ? (
-            <View style={styles.empty}>
-              <Text style={styles.emptyIcon}>🎯</Text>
-              <Text style={styles.emptyText}>No {filter} plans</Text>
+            <View style={s.empty}>
+              <Text style={s.emptyIcon}>🎯</Text>
+              <Text style={s.emptyText}>No {filter} plans</Text>
             </View>
           ) : null
         }
@@ -131,43 +135,43 @@ export default function PlansScreen() {
           const due = formatDueDate(item.due_date);
           const config = STATUS_CONFIG[item.status] || STATUS_CONFIG.active;
           return (
-            <TouchableOpacity style={styles.card} onLongPress={() => handleDelete(item.id)}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle}>{item.title}</Text>
-                <View style={[styles.statusDot, { backgroundColor: config.color }]} />
+            <TouchableOpacity style={s.card} onLongPress={() => handleDelete(item.id)}>
+              <View style={s.cardHeader}>
+                <Text style={s.cardTitle}>{item.title}</Text>
+                <View style={[s.statusDot, { backgroundColor: config.color }]} />
               </View>
               {item.description && (
-                <Text style={styles.cardDesc} numberOfLines={2}>{item.description}</Text>
+                <Text style={s.cardDesc} numberOfLines={2}>{item.description}</Text>
               )}
-              <View style={styles.cardFooter}>
+              <View style={s.cardFooter}>
                 {due && (
-                  <Text style={[styles.dueDate, due.isPast && item.status === 'active' && { color: '#ff4d6a' }]}>
+                  <Text style={[s.dueDate, due.isPast && item.status === 'active' && { color: '#ff4d6a' }]}>
                     Due: {due.label}
                   </Text>
                 )}
-                <View style={styles.cardActions}>
+                <View style={s.cardActions}>
                   {item.status === 'active' && (
                     <TouchableOpacity
-                      style={styles.actionChip}
+                      style={s.actionChip}
                       onPress={() => updateStatus(item, 'completed')}
                     >
-                      <Text style={styles.actionChipText}>Complete</Text>
+                      <Text style={s.actionChipText}>Complete</Text>
                     </TouchableOpacity>
                   )}
                   {item.status === 'active' && (
                     <TouchableOpacity
-                      style={[styles.actionChip, { backgroundColor: '#88888822' }]}
+                      style={[s.actionChip, { backgroundColor: theme.textMuted + '22' }]}
                       onPress={() => updateStatus(item, 'archived')}
                     >
-                      <Text style={[styles.actionChipText, { color: '#888' }]}>Archive</Text>
+                      <Text style={[s.actionChipText, { color: theme.textMuted }]}>Archive</Text>
                     </TouchableOpacity>
                   )}
                   {item.status !== 'active' && (
                     <TouchableOpacity
-                      style={styles.actionChip}
+                      style={s.actionChip}
                       onPress={() => updateStatus(item, 'active')}
                     >
-                      <Text style={styles.actionChipText}>Reactivate</Text>
+                      <Text style={s.actionChipText}>Reactivate</Text>
                     </TouchableOpacity>
                   )}
                 </View>
@@ -178,27 +182,27 @@ export default function PlansScreen() {
       />
 
       {/* FAB */}
-      <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)}>
-        <Text style={styles.fabText}>+</Text>
+      <TouchableOpacity style={s.fab} onPress={() => setModalVisible(true)}>
+        <Text style={s.fabText}>+</Text>
       </TouchableOpacity>
 
       {/* New Plan Modal */}
       <Modal visible={modalVisible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>New Plan</Text>
+        <View style={s.modalOverlay}>
+          <View style={s.modalContent}>
+            <Text style={s.modalTitle}>New Plan</Text>
             <TextInput
-              style={styles.input}
+              style={s.input}
               placeholder="Plan title"
-              placeholderTextColor="#666"
+              placeholderTextColor={theme.textMuted}
               value={title}
               onChangeText={setTitle}
               maxLength={100}
             />
             <TextInput
-              style={[styles.input, styles.inputMultiline]}
+              style={[s.input, s.inputMultiline]}
               placeholder="Description (optional)"
-              placeholderTextColor="#666"
+              placeholderTextColor={theme.textMuted}
               value={description}
               onChangeText={setDescription}
               multiline
@@ -206,29 +210,29 @@ export default function PlansScreen() {
               maxLength={500}
             />
             <TextInput
-              style={styles.input}
+              style={s.input}
               placeholder="Due date (YYYY-MM-DD)"
-              placeholderTextColor="#666"
+              placeholderTextColor={theme.textMuted}
               value={dueDate}
               onChangeText={setDueDate}
               maxLength={10}
             />
-            <View style={styles.modalActions}>
+            <View style={s.modalActions}>
               <TouchableOpacity
-                style={styles.cancelBtn}
+                style={s.cancelBtn}
                 onPress={() => { setModalVisible(false); setTitle(''); setDescription(''); setDueDate(''); }}
               >
-                <Text style={styles.cancelBtnText}>Cancel</Text>
+                <Text style={s.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.saveBtn, (!title.trim() || saving) && { opacity: 0.4 }]}
+                style={[s.saveBtn, (!title.trim() || saving) && { opacity: 0.4 }]}
                 onPress={handleAdd}
                 disabled={!title.trim() || saving}
               >
                 {saving ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
-                  <Text style={styles.saveBtnText}>Create</Text>
+                  <Text style={s.saveBtnText}>Create</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -239,58 +243,58 @@ export default function PlansScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0f' },
+const styles = (t: Theme) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: t.bg },
   filterRow: { flexDirection: 'row', gap: 8, padding: 16 },
   filterTab: {
     paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
-    borderWidth: 1, borderColor: '#2a2a3e',
+    borderWidth: 1, borderColor: t.cardBorder,
   },
-  filterText: { fontSize: 13, fontWeight: '600', color: '#666' },
+  filterText: { fontSize: 13, fontWeight: '600', color: t.textMuted },
   empty: { alignItems: 'center', marginTop: 60 },
   emptyIcon: { fontSize: 48, marginBottom: 12 },
-  emptyText: { fontSize: 16, color: '#888' },
+  emptyText: { fontSize: 16, color: t.textMuted },
   card: {
-    backgroundColor: '#1a1a2e', borderRadius: 16, padding: 16,
-    marginBottom: 12, borderWidth: 1, borderColor: '#2a2a3e',
+    backgroundColor: t.card, borderRadius: 16, padding: 16,
+    marginBottom: 12, borderWidth: 1, borderColor: t.cardBorder,
   },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  cardTitle: { fontSize: 17, fontWeight: '700', color: '#fff', flex: 1 },
+  cardTitle: { fontSize: 17, fontWeight: '700', color: t.text, flex: 1 },
   statusDot: { width: 10, height: 10, borderRadius: 5 },
-  cardDesc: { fontSize: 14, color: '#aaa', marginTop: 6, lineHeight: 20 },
+  cardDesc: { fontSize: 14, color: t.textMuted, marginTop: 6, lineHeight: 20 },
   cardFooter: { marginTop: 12 },
-  dueDate: { fontSize: 12, color: '#888', marginBottom: 8 },
+  dueDate: { fontSize: 12, color: t.textMuted, marginBottom: 8 },
   cardActions: { flexDirection: 'row', gap: 8 },
   actionChip: {
-    backgroundColor: '#7c5cfc22', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 8,
+    backgroundColor: t.accent + '22', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 8,
   },
-  actionChipText: { color: '#7c5cfc', fontSize: 12, fontWeight: '600' },
+  actionChipText: { color: t.accent, fontSize: 12, fontWeight: '600' },
   fab: {
     position: 'absolute', bottom: 24, right: 24,
     width: 56, height: 56, borderRadius: 28,
-    backgroundColor: '#7c5cfc', alignItems: 'center', justifyContent: 'center',
-    elevation: 5, shadowColor: '#7c5cfc', shadowOffset: { width: 0, height: 4 },
+    backgroundColor: t.accent, alignItems: 'center', justifyContent: 'center',
+    elevation: 5, shadowColor: t.accent, shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3, shadowRadius: 8,
   },
   fabText: { fontSize: 28, color: '#fff', fontWeight: '600', marginTop: -2 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
   modalContent: {
-    backgroundColor: '#1a1a2e', borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    backgroundColor: t.card, borderTopLeftRadius: 24, borderTopRightRadius: 24,
     padding: 24, paddingBottom: 40,
   },
-  modalTitle: { fontSize: 20, fontWeight: '700', color: '#fff', marginBottom: 16 },
+  modalTitle: { fontSize: 20, fontWeight: '700', color: t.text, marginBottom: 16 },
   input: {
-    backgroundColor: '#0a0a0f', borderRadius: 12, padding: 14,
-    color: '#fff', fontSize: 15, borderWidth: 1, borderColor: '#2a2a3e', marginBottom: 12,
+    backgroundColor: t.inputBg, borderRadius: 12, padding: 14,
+    color: t.text, fontSize: 15, borderWidth: 1, borderColor: t.inputBorder, marginBottom: 12,
   },
   inputMultiline: { minHeight: 80, textAlignVertical: 'top' },
   modalActions: { flexDirection: 'row', gap: 12, marginTop: 8 },
   cancelBtn: {
-    flex: 1, padding: 14, borderRadius: 12, alignItems: 'center', backgroundColor: '#2a2a3e',
+    flex: 1, padding: 14, borderRadius: 12, alignItems: 'center', backgroundColor: t.surface,
   },
-  cancelBtnText: { color: '#888', fontWeight: '600', fontSize: 15 },
+  cancelBtnText: { color: t.textMuted, fontWeight: '600', fontSize: 15 },
   saveBtn: {
-    flex: 1, padding: 14, borderRadius: 12, alignItems: 'center', backgroundColor: '#7c5cfc',
+    flex: 1, padding: 14, borderRadius: 12, alignItems: 'center', backgroundColor: t.accent,
   },
   saveBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
 });

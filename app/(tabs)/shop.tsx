@@ -4,6 +4,7 @@ import {
   Alert, RefreshControl, ScrollView,
 } from 'react-native';
 import Watermark from '../../components/Watermark';
+import UserAvatar from '../../components/UserAvatar';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../lib/AuthContext';
@@ -90,7 +91,7 @@ export default function ShopScreen() {
     if (!profile) return;
     if (ownedFrameIds.has(frame.id)) {
       await supabase.from('profiles').update({ active_frame_id: frame.id }).eq('id', profile.id);
-      fetchProfile();
+      await fetchProfile();
       Alert.alert('Equipped!', `${frame.name} frame is now active.`);
       return;
     }
@@ -111,8 +112,8 @@ export default function ShopScreen() {
           if (error) {
             Alert.alert('Error', error.message);
           } else {
-            fetchProfile();
-            fetchShop();
+            await fetchProfile();
+            await fetchShop();
             Alert.alert('Purchased!', `${frame.name} frame is now yours!`);
           }
         },
@@ -259,9 +260,13 @@ export default function ShopScreen() {
                 style={[s.badgeCard, owned && { borderColor: theme.success + '66' }]}
                 onPress={() => buyFrame(item)}
               >
-                <View style={[s.frameCircle, { borderColor: item.color }]}>
-                  <Text style={{ fontSize: 22 }}>👤</Text>
-                </View>
+                <UserAvatar
+                  username={profile?.username || ''}
+                  avatarUrl={profile?.avatar_url}
+                  frameColor={item.color}
+                  frameAnimation={item.animation_type}
+                  size={48}
+                />
                 <Text style={s.badgeName}>{item.name}</Text>
                 <Text style={[s.badgeDesc, { fontSize: 11 }]}>{item.animation_type} effect</Text>
                 <View style={[s.badgePriceBtn, owned && s.badgePriceOwned]}>

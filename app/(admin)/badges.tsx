@@ -117,9 +117,9 @@ export default function AdminBadgesScreen() {
           )}
           <View style={s.row}>
             <Text style={s.costText}>{item.price} coins</Text>
-            {item.is_premium && (
+            {!item.is_active && (
               <View style={s.premiumBadge}>
-                <Text style={s.premiumText}>PREMIUM</Text>
+                <Text style={s.premiumText}>HIDDEN</Text>
               </View>
             )}
           </View>

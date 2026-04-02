@@ -1,15 +1,19 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  RefreshControl, ActivityIndicator, Alert,
+  RefreshControl, ActivityIndicator, Alert, Animated, Easing,
 } from 'react-native';
 import Watermark from '../../components/Watermark';
 import ReactionBar from '../../components/ReactionBar';
+import UserAvatar from '../../components/UserAvatar';
+import AwardBadge from '../../components/AwardBadge';
+import AwardPicker from '../../components/AwardPicker';
+import EmojiConfetti from '../../components/EmojiConfetti';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../lib/AuthContext';
 import { useTheme, Theme } from '../../lib/theme';
-import { Feature } from '../../lib/types';
+import { Feature, FeatureAwardCount } from '../../lib/types';
 
 type SortBy = 'top' | 'newest' | 'trending';
 
@@ -42,6 +46,10 @@ export default function TrendingScreen() {
   const [sortBy, setSortBy] = useState<SortBy>('top');
   const [weeklyStats, setWeeklyStats] = useState<WeeklyStats | null>(null);
   const [activities, setActivities] = useState<ActivityEvent[]>([]);
+  const [featureAwards, setFeatureAwards] = useState<Record<string, FeatureAwardCount[]>>({});
+  const [awardPickerFeatureId, setAwardPickerFeatureId] = useState<string | null>(null);
+  const [awardBurst, setAwardBurst] = useState<{ featureId: string; emoji: string } | null>(null);
+  const [confettiEmoji, setConfettiEmoji] = useState<string | null>(null);
   const { session, profile } = useAuthContext();
   const { theme } = useTheme();
   const router = useRouter();
@@ -184,6 +192,21 @@ export default function TrendingScreen() {
       setUserVotes(new Set((votes || []).map(v => v.feature_id)));
     }
 
+    // Fetch awards for all features
+    const featureIds = (data || []).map((f: any) => f.id);
+    if (featureIds.length > 0) {
+      const { data: awardData } = await supabase
+        .from('feature_award_counts')
+        .select('*')
+        .in('feature_id', featureIds);
+      const grouped: Record<string, FeatureAwardCount[]> = {};
+      (awardData || []).forEach((a: any) => {
+        if (!grouped[a.feature_id]) grouped[a.feature_id] = [];
+        grouped[a.feature_id].push(a);
+      });
+      setFeatureAwards(grouped);
+    }
+
     setLoading(false);
     setRefreshing(false);
   }, [sortBy, session]);
@@ -194,25 +217,34 @@ export default function TrendingScreen() {
     fetchActivities();
   }, [fetchFeatures, fetchWeeklyStats, fetchActivities]);
 
+  const [votingIds, setVotingIds] = useState<Set<string>>(new Set());
+
   async function handleVote(featureId: string) {
     if (!session || !profile) return;
+    if (votingIds.has(featureId)) return;
+    setVotingIds(prev => new Set(prev).add(featureId));
 
     const hasVoted = userVotes.has(featureId);
 
     if (hasVoted) {
-      await supabase.from('votes').delete()
-        .eq('user_id', session.user.id)
-        .eq('feature_id', featureId);
       setUserVotes(prev => { const s = new Set(prev); s.delete(featureId); return s; });
       setFeatures(prev => prev.map(f =>
         f.id === featureId ? { ...f, vote_count: f.vote_count - 1, score: f.score - 1 } : f
       ));
+      await supabase.from('votes').delete()
+        .eq('user_id', session.user.id)
+        .eq('feature_id', featureId);
     } else {
       if (profile.votes_remaining <= 0) {
         Alert.alert('No votes left', 'Upgrade to Pro for more votes!');
+        setVotingIds(prev => { const s = new Set(prev); s.delete(featureId); return s; });
         return;
       }
       const weight = (profile.tier === 'ultra' || profile.tier === 'legendary') ? 3 : 1;
+      setUserVotes(prev => new Set(prev).add(featureId));
+      setFeatures(prev => prev.map(f =>
+        f.id === featureId ? { ...f, vote_count: f.vote_count + 1, score: f.score + weight } : f
+      ));
       await supabase.from('votes').insert({
         user_id: session.user.id,
         feature_id: featureId,
@@ -221,11 +253,8 @@ export default function TrendingScreen() {
       await supabase.from('profiles').update({
         votes_remaining: profile.votes_remaining - 1,
       }).eq('id', session.user.id);
-      setUserVotes(prev => new Set(prev).add(featureId));
-      setFeatures(prev => prev.map(f =>
-        f.id === featureId ? { ...f, vote_count: f.vote_count + 1, score: f.score + weight } : f
-      ));
     }
+    setVotingIds(prev => { const s = new Set(prev); s.delete(featureId); return s; });
   }
 
   // Build mixed feed: highlights at top, then interleave activities with features
@@ -253,7 +282,7 @@ export default function TrendingScreen() {
     const s = styles(theme);
     if (item.kind === 'highlights') return renderHighlights(item.stats, s);
     if (item.kind === 'activity') return renderActivity(item.event, s);
-    return renderFeature(item.feature, s);
+    return <FeatureCard item={item.feature} s={s} />;
   }
 
   function renderHighlights(stats: WeeklyStats, s: ReturnType<typeof styles>) {
@@ -303,50 +332,182 @@ export default function TrendingScreen() {
     );
   }
 
-  function renderFeature(item: Feature, s: ReturnType<typeof styles>) {
+  function FeatureCard({ item, s }: { item: Feature; s: ReturnType<typeof styles> }) {
     const hasVoted = userVotes.has(item.id);
+    const awards = featureAwards[item.id] || [];
+    const lastTapRef = useRef(0);
+    const arrowAnim = useRef(new Animated.Value(0)).current;
+    const [showArrow, setShowArrow] = useState(false);
+    const burstAnim = useRef(new Animated.Value(0)).current;
+    const [showBurst, setShowBurst] = useState(false);
+    const [burstEmoji, setBurstEmoji] = useState('');
+
+    // Watch for award burst from parent
+    useEffect(() => {
+      if (awardBurst && awardBurst.featureId === item.id) {
+        setBurstEmoji(awardBurst.emoji);
+        // Wait for picker modal to fully close
+        const timeout = setTimeout(() => {
+          setShowBurst(true);
+          burstAnim.setValue(0);
+          Animated.sequence([
+            Animated.timing(burstAnim, { toValue: 1, duration: 500, easing: Easing.out(Easing.back(2)), useNativeDriver: false }),
+            Animated.delay(800),
+            Animated.timing(burstAnim, { toValue: 2, duration: 500, easing: Easing.in(Easing.ease), useNativeDriver: false }),
+          ]).start(() => {
+            setShowBurst(false);
+            setAwardBurst(null);
+          });
+        }, 600);
+        return () => clearTimeout(timeout);
+      }
+    }, [awardBurst]);
+
+    function handleCardPress() {
+      const now = Date.now();
+      if (now - lastTapRef.current < 300) {
+        lastTapRef.current = 0;
+        // Double tap — always show animation, vote if not already voted
+        setShowArrow(true);
+        arrowAnim.setValue(0);
+        Animated.sequence([
+          Animated.timing(arrowAnim, { toValue: 1, duration: 300, easing: Easing.out(Easing.back(2)), useNativeDriver: false }),
+          Animated.delay(400),
+          Animated.timing(arrowAnim, { toValue: 2, duration: 300, easing: Easing.in(Easing.ease), useNativeDriver: false }),
+        ]).start(() => {
+          setShowArrow(false);
+          if (!hasVoted) {
+            handleVote(item.id);
+          }
+        });
+      } else {
+        lastTapRef.current = now;
+        setTimeout(() => {
+          if (lastTapRef.current === now) {
+            router.push(`/feature/${item.id}`);
+          }
+        }, 300);
+      }
+    }
+
+    const arrowScale = arrowAnim.interpolate({ inputRange: [0, 1, 2], outputRange: [0, 1.3, 0] });
+    const arrowOpacity = arrowAnim.interpolate({ inputRange: [0, 0.5, 1, 1.8, 2], outputRange: [0, 1, 1, 1, 0] });
+    const arrowTranslateY = arrowAnim.interpolate({ inputRange: [0, 1, 2], outputRange: [20, 0, -30] });
+
+    const burstScale = burstAnim.interpolate({ inputRange: [0, 1, 2], outputRange: [0, 1.5, 0] });
+    const burstOpacity = burstAnim.interpolate({ inputRange: [0, 0.3, 1, 1.8, 2], outputRange: [0, 1, 1, 1, 0] });
+    const burstRotate = burstAnim.interpolate({ inputRange: [0, 1, 2], outputRange: ['-20deg', '0deg', '15deg'] });
+
     return (
       <TouchableOpacity
         style={s.card}
-        onPress={() => router.push(`/feature/${item.id}`)}
+        onPress={handleCardPress}
         activeOpacity={0.7}
       >
-        <TouchableOpacity
-          style={[s.voteBox, hasVoted && s.voteBoxActive]}
-          onPress={() => handleVote(item.id)}
-        >
-          <Text style={[s.voteArrow, hasVoted && s.voteArrowActive]}>▲</Text>
-          <Text style={[s.voteCount, hasVoted && s.voteCountActive]}>
-            {item.vote_count}
-          </Text>
-        </TouchableOpacity>
-        <View style={s.cardContent}>
-          <View style={s.cardMeta}>
-            {item.category_name && (
-              <View style={[s.badge, { backgroundColor: (item.category_color || '#7c5cfc') + '22' }]}>
-                <Text style={[s.badgeText, { color: item.category_color || '#7c5cfc' }]}>
-                  {item.category_name}
-                </Text>
-              </View>
-            )}
-            {item.status !== 'open' && (
-              <View style={[s.badge, { backgroundColor: getStatusColor(item.status) + '22' }]}>
-                <Text style={[s.badgeText, { color: getStatusColor(item.status) }]}>
-                  {item.status.replace('_', ' ')}
-                </Text>
-              </View>
-            )}
+        {/* Double-tap arrow overlay */}
+        {showArrow && (
+          <Animated.View style={[s.doubleTapOverlay, {
+            opacity: arrowOpacity,
+            transform: [{ scale: arrowScale }, { translateY: arrowTranslateY }],
+          }]} pointerEvents="none">
+            <Text style={s.doubleTapArrow}>▲</Text>
+          </Animated.View>
+        )}
+
+        {/* Award burst overlay */}
+        {showBurst && (
+          <Animated.View style={[s.doubleTapOverlay, {
+            opacity: burstOpacity,
+            transform: [{ scale: burstScale }, { rotate: burstRotate }],
+          }]} pointerEvents="none">
+            <Text style={{ fontSize: 72 }}>{burstEmoji}</Text>
+          </Animated.View>
+        )}
+
+        {/* Top row: vote button + count + badges */}
+        <View style={s.cardTopRow}>
+          <TouchableOpacity
+            style={[s.voteCircle, hasVoted && s.voteCircleActive]}
+            onPress={() => {
+              lastTapRef.current = 0; // cancel any pending navigation
+              handleVote(item.id);
+            }}
+          >
+            <Text style={[s.voteChevron, hasVoted && s.voteChevronActive]}>⌃</Text>
+          </TouchableOpacity>
+          <Text style={[s.voteCount, hasVoted && s.voteCountActive]}>{item.vote_count}</Text>
+          <View style={s.cardTopRight}>
+            <View style={s.cardMeta}>
+              {item.category_name && (
+                <View style={[s.badge, { backgroundColor: (item.category_color || '#7c5cfc') + '22' }]}>
+                  <Text style={[s.badgeText, { color: item.category_color || '#7c5cfc' }]}>
+                    {item.category_name}
+                  </Text>
+                </View>
+              )}
+              {item.status !== 'open' && (
+                <View style={[s.badge, { backgroundColor: getStatusColor(item.status) + '22' }]}>
+                  <Text style={[s.badgeText, { color: getStatusColor(item.status) }]}>
+                    {item.status.replace('_', ' ')}
+                  </Text>
+                </View>
+              )}
+            </View>
           </View>
-          <Text style={s.cardTitle} numberOfLines={2}>{item.title}</Text>
-          <Text style={s.cardDesc} numberOfLines={2}>{item.description}</Text>
-          <View style={s.cardFooter}>
-            <TouchableOpacity onPress={() => router.push(`/user/${item.author_username}` as any)}>
-              <Text style={s.cardAuthor}>by {item.author_username || 'anon'}</Text>
+        </View>
+
+        {/* Title + Description */}
+        <Text style={s.cardTitle} numberOfLines={2}>{item.title}</Text>
+        <Text style={s.cardDesc} numberOfLines={3}>{item.description}</Text>
+
+        {/* Awards row */}
+        {awards.length > 0 && (
+          <View style={s.awardsRow}>
+            {awards.map(a => (
+              <AwardBadge
+                key={a.award_type_id}
+                emoji={a.emoji}
+                count={a.count}
+                animation={a.animation}
+                color={a.color}
+                size={22}
+                onPress={() => setConfettiEmoji(a.emoji)}
+              />
+            ))}
+          </View>
+        )}
+
+        {/* Footer: avatar + author + time + comments + give award */}
+        <View style={s.cardFooter}>
+          <TouchableOpacity
+            style={s.authorRow}
+            onPress={() => router.push(`/user/${item.author_username}` as any)}
+          >
+            <UserAvatar
+              username={item.author_username || 'anon'}
+              avatarUrl={item.author_avatar}
+              frameColor={item.author_frame_color}
+              frameAnimation={item.author_frame_animation}
+              size={28}
+            />
+            <View>
+              <Text style={s.submittedLabel}>Submitted by</Text>
+              <Text style={s.cardAuthor}>{item.author_username || 'anon'} <Text style={s.cardTime}>· {timeAgo(item.created_at)}</Text></Text>
+            </View>
+          </TouchableOpacity>
+          <View style={s.footerRight}>
+            <TouchableOpacity
+              style={s.awardBtn}
+              onPress={() => setAwardPickerFeatureId(item.id)}
+            >
+              <Text style={s.awardBtnText}>🏆</Text>
             </TouchableOpacity>
             <Text style={s.cardComments}>💬 {item.comment_count}</Text>
           </View>
-          <ReactionBar featureId={item.id} />
         </View>
+
+        {/* Reactions */}
+        <ReactionBar featureId={item.id} />
       </TouchableOpacity>
     );
   }
@@ -404,6 +565,22 @@ export default function TrendingScreen() {
             <Text style={s.emptySubtext}>Be the first to submit one!</Text>
           </View>
         }
+      />
+
+      <AwardPicker
+        featureId={awardPickerFeatureId || ''}
+        visible={!!awardPickerFeatureId}
+        onClose={() => setAwardPickerFeatureId(null)}
+        onAwarded={(emoji) => {
+          setAwardBurst({ featureId: awardPickerFeatureId!, emoji });
+          fetchFeatures();
+        }}
+      />
+
+      <EmojiConfetti
+        emoji={confettiEmoji || awardBurst?.emoji || '🏆'}
+        visible={!!awardBurst || !!confettiEmoji}
+        onDone={() => setConfettiEmoji(null)}
       />
     </View>
   );
@@ -476,28 +653,52 @@ const styles = (t: Theme) => StyleSheet.create({
 
   // Feature Cards
   card: {
-    flexDirection: 'row', backgroundColor: t.card, borderRadius: 16,
-    padding: 16, gap: 14, borderWidth: 1, borderColor: t.cardBorder, marginBottom: 12,
+    backgroundColor: t.card, borderRadius: 16,
+    padding: 18, borderWidth: 1, borderColor: t.cardBorder, marginBottom: 12,
   },
-  voteBox: {
-    alignItems: 'center', justifyContent: 'center', width: 52,
-    paddingVertical: 8, borderRadius: 12, backgroundColor: t.surface,
+  cardTopRow: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 14, marginBottom: 4,
+  },
+  voteCircle: {
+    width: 52, height: 48, borderRadius: 12,
+    backgroundColor: t.surface, alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: t.cardBorder,
   },
-  voteBoxActive: { backgroundColor: t.accentLight, borderColor: t.accent },
-  voteArrow: { fontSize: 16, color: t.textMuted },
-  voteArrowActive: { color: t.accent },
-  voteCount: { fontSize: 18, fontWeight: '700', color: t.textMuted, marginTop: 2 },
+  voteCircleActive: { backgroundColor: t.accent, borderColor: t.accent },
+  voteChevron: { fontSize: 24, fontWeight: '700', color: t.textMuted, marginTop: -2 },
+  voteChevronActive: { color: '#fff' },
+  voteCount: {
+    fontSize: 20, fontWeight: '800', color: t.accent,
+  },
   voteCountActive: { color: t.accent },
-  cardContent: { flex: 1, gap: 6 },
+  cardTopRight: { flex: 1, paddingTop: 4 },
   cardMeta: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
-  badge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-  badgeText: { fontSize: 11, fontWeight: '600', textTransform: 'uppercase' },
-  cardTitle: { fontSize: 16, fontWeight: '700', color: t.text, lineHeight: 22 },
-  cardDesc: { fontSize: 13, color: t.textSecondary, lineHeight: 18 },
-  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
-  cardAuthor: { fontSize: 12, color: t.textMuted },
-  cardComments: { fontSize: 12, color: t.textMuted },
+  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  badgeText: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+  cardTitle: { fontSize: 18, fontWeight: '800', color: t.text, lineHeight: 24, marginBottom: 6 },
+  cardDesc: { fontSize: 14, color: t.textSecondary, lineHeight: 20, marginBottom: 14 },
+  cardFooter: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingTop: 14, borderTopWidth: 1, borderTopColor: t.cardBorder,
+  },
+  authorRow: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
+  submittedLabel: { fontSize: 11, color: t.textMuted, marginBottom: 1 },
+  cardAuthor: { fontSize: 13, fontWeight: '700', color: t.text },
+  cardTime: { fontSize: 12, fontWeight: '400', color: t.textMuted },
+  awardsRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginBottom: 8 },
+  footerRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  awardBtn: {
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: t.surface, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: t.cardBorder,
+  },
+  awardBtnText: { fontSize: 16 },
+  cardComments: { fontSize: 13, color: t.textMuted },
+  doubleTapOverlay: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    alignItems: 'center', justifyContent: 'center', zIndex: 10,
+  },
+  doubleTapArrow: { fontSize: 64, color: t.accent },
   empty: { alignItems: 'center', paddingTop: 80 },
   emptyText: { fontSize: 18, fontWeight: '600', color: t.textMuted, marginTop: 12 },
   emptySubtext: { fontSize: 14, color: t.textMuted, marginTop: 4 },

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, viewport-fit=cover, user-scalable=no">
   <title>Moon Patrol: Dark Frontier</title>
   <style>
     * {
@@ -17,17 +17,37 @@
       justify-content: center;
       align-items: center;
       height: 100vh;
+      height: 100dvh;
       overflow: hidden;
       font-family: 'Courier New', monospace;
+      touch-action: manipulation;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
     }
 
     canvas {
       border: 2px solid #333;
       image-rendering: pixelated;
+      touch-action: none;
     }
   </style>
 </head>
 <body>
+  <script>
+    // Block pinch-to-zoom and double-tap zoom
+    document.addEventListener('gesturestart', e => e.preventDefault(), { passive: false });
+    document.addEventListener('gesturechange', e => e.preventDefault(), { passive: false });
+    document.addEventListener('gestureend', e => e.preventDefault(), { passive: false });
+    document.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+    // Block double-tap zoom
+    let lastTouchEnd = 0;
+    document.addEventListener('touchend', e => {
+      const now = Date.now();
+      if (now - lastTouchEnd <= 300) e.preventDefault();
+      lastTouchEnd = now;
+    }, { passive: false });
+  </script>
   <canvas id="gameCanvas"></canvas>
 
   <script>
@@ -36,20 +56,50 @@
     // ============================================================
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
-    canvas.width = 900;
-    canvas.height = 500;
+    const GAME_WIDTH = 900;
+    const GAME_HEIGHT = 600; // Internal game area height (sky + terrain + some ground)
+    canvas.width = GAME_WIDTH;
+    canvas.height = GAME_HEIGHT;
+    let skyOffset = 0; // Extra sky pixels above game area
+    let groundExtra = 0; // Extra ground pixels below game area
+
+    // Resize canvas to fill screen, extending sky and ground
+    function fitCanvasToScreen() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const scale = w / GAME_WIDTH; // Scale to fill width
+      const neededHeight = Math.ceil(h / scale); // Canvas height in game pixels to fill screen
+      canvas.width = GAME_WIDTH;
+      canvas.height = Math.max(GAME_HEIGHT, neededHeight);
+      // Sky offset: center the game area, extra space split between sky and ground
+      const extra = canvas.height - GAME_HEIGHT;
+      skyOffset = Math.floor(extra * 0.4); // 40% extra sky, 60% extra ground
+      groundExtra = extra - skyOffset;
+      // CSS: scale canvas to fill screen width exactly
+      const cw = w;
+      const ch = canvas.height * scale;
+      canvas.style.width = cw + 'px';
+      canvas.style.height = ch + 'px';
+      canvas.style.border = 'none';
+      canvas.style.position = 'fixed';
+      canvas.style.top = '0px';
+      canvas.style.left = '0px';
+      // Rebuild CRT overlay for new size
+      rebuildCRT();
+      // Re-init stars to fill extended sky (if stars exist)
+      try { if (stars && stars.length > 0) initStars(); } catch(e) {}
+    }
 
     // Pre-render CRT scanline overlay for performance
     const crtCanvas = document.createElement('canvas');
     const crtCtx = crtCanvas.getContext('2d');
-    crtCanvas.width = canvas.width;
-    crtCanvas.height = canvas.height;
-    (function buildCRT() {
+    function rebuildCRT() {
+      crtCanvas.width = canvas.width;
+      crtCanvas.height = canvas.height;
       crtCtx.fillStyle = 'rgba(0, 0, 0, 0.12)';
       for (let y = 0; y < crtCanvas.height; y += 3) {
         crtCtx.fillRect(0, y, crtCanvas.width, 1);
       }
-      // Vignette corners
       const vg = crtCtx.createRadialGradient(
         crtCanvas.width / 2, crtCanvas.height / 2, crtCanvas.height * 0.4,
         crtCanvas.width / 2, crtCanvas.height / 2, crtCanvas.height * 0.8
@@ -58,13 +108,16 @@
       vg.addColorStop(1, 'rgba(0,0,0,0.35)');
       crtCtx.fillStyle = vg;
       crtCtx.fillRect(0, 0, crtCanvas.width, crtCanvas.height);
-    })();
+    }
+    rebuildCRT();
+    fitCanvasToScreen();
+    window.addEventListener('resize', fitCanvasToScreen);
 
     // ============================================================
     // GAME CONSTANTS
     // ============================================================
-    const GROUND_Y = 400;
-    const PLATFORM_Y = 280;
+    const GROUND_Y = 530;
+    const PLATFORM_Y = 410;
     const GRAVITY = 0.6;
     const JUMP_FORCE = -12;
     const SCROLL_SPEED = 3;
@@ -1111,10 +1164,13 @@
 
     function initStars() {
       stars.length = 0;
-      for (let i = 0; i < 120; i++) {
+      // Fill stars across the full sky range including extended sky above
+      const starTopY = -skyOffset;
+      const starRange = PLATFORM_Y - 40 + skyOffset;
+      for (let i = 0; i < 180; i++) {
         stars.push({
           x: Math.random() * canvas.width,
-          y: Math.random() * (PLATFORM_Y - 40),
+          y: starTopY + Math.random() * starRange,
           size: Math.random() * 2 + 0.5,
           speed: Math.random() * 0.5 + 0.1,
           brightness: Math.random() * 0.6 + 0.4
@@ -1123,11 +1179,13 @@
     }
 
     function updateStars() {
+      const starTopY = -skyOffset;
+      const starRange = PLATFORM_Y - 40 + skyOffset;
       for (const star of stars) {
         star.x -= star.speed * deltaTime;
         if (star.x < 0) {
           star.x = canvas.width;
-          star.y = Math.random() * (PLATFORM_Y - 40);
+          star.y = starTopY + Math.random() * starRange;
         }
       }
     }
@@ -1186,18 +1244,19 @@
     function drawTerrain() {
       const theme = getThemeColors(getCurrentTheme());
 
-      // Ground segments (skip gaps)
+      // Ground segments (skip gaps) — extend fill to bottom of canvas
+      const groundFillH = canvas.height; // Enough to fill any canvas size
       for (const seg of terrainSegments) {
         if (seg.isGap) {
           // Draw gap as a dark pit with danger edges
           ctx.fillStyle = '#111';
-          ctx.fillRect(seg.x, GROUND_Y, 42, 100);
+          ctx.fillRect(seg.x, GROUND_Y, 42, groundFillH);
           ctx.fillStyle = '#f44';
           ctx.fillRect(seg.x, GROUND_Y, 2, 6);
           ctx.fillRect(seg.x + 40, GROUND_Y, 2, 6);
         } else {
           ctx.fillStyle = theme.ground;
-          ctx.fillRect(seg.x, GROUND_Y, 42, seg.height + 100);
+          ctx.fillRect(seg.x, GROUND_Y, 42, groundFillH);
         }
       }
       ctx.fillStyle = theme.groundSurface;
@@ -2772,13 +2831,106 @@
 
       ctx.save();
       ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
-      if (centerX - radius > 0) ctx.fillRect(0, 0, centerX - radius, canvas.height);
-      if (centerX + radius < canvas.width)
-        ctx.fillRect(centerX + radius, 0, canvas.width - (centerX + radius), canvas.height);
+      ctx.fillRect(0, -skyOffset, canvas.width, canvas.height + skyOffset);
       ctx.restore();
+    }
+
+    // ============================================================
+    // FUNNY QUOTES PER LEVEL
+    // ============================================================
+    const levelQuotes = [
+      // Level 1 - Moon
+      ["Houston, we have a problem... my snack ran out", "One small step for rover, one giant pothole to dodge"],
+      // Level 2 - Mars
+      ["Mars bars not found. Only rocks.", "Elon promised this would be nicer"],
+      // Level 3 - Asteroid Belt
+      ["My insurance doesn't cover asteroid damage", "Space rocks: Nature's speed bumps"],
+      // Level 4 - Jupiter
+      ["Jupiter? More like Jupe-NOPE-er", "The Great Red Spot is just Jupiter blushing"],
+      // Level 5 - Europa
+      ["Do NOT eat the yellow ice on Europa", "There might be fish here. Fish with lasers."],
+      // Level 6 - Titan
+      ["Titan: Where the rain is gasoline. BBQ anyone?", "Saturn's rings are just cosmic hula hoops"],
+      // Level 7 - Pluto
+      ["Pluto IS a planet, fight me", "We drove so far Pluto feels sorry for us"],
+      // Level 8+
+      ["You're still playing?! Respect.", "The devs didn't think you'd get this far"],
+    ];
+
+    function getQuoteForLevel(level) {
+      const idx = Math.min(level - 1, levelQuotes.length - 1);
+      const quotes = levelQuotes[idx];
+      return quotes[Math.floor(frameCount / 300) % quotes.length];
+    }
+
+    // ============================================================
+    // GROUND HUD (below the terrain)
+    // ============================================================
+    function drawGroundHUD() {
+      const baseY = GROUND_Y + 20;
+      const theme = getThemeColors(getCurrentTheme());
+      const bottomY = canvas.height - skyOffset + 20; // Absolute bottom in translated coords
+
+      // Subtle texture lines on the ground — extend to actual canvas bottom
+      ctx.fillStyle = 'rgba(255,255,255,0.02)';
+      for (let y = baseY; y < bottomY; y += 14) {
+        ctx.fillRect(0, y, canvas.width, 1);
+      }
+
+      // Level name and zone info — left side
+      const zoneColors = { moon: '#668', mars: '#a64', asteroid: '#86a', jupiter: '#a84', europa: '#6ac', titan: '#a90', pluto: '#88a' };
+      const currentTheme = getCurrentTheme();
+      const themeColors = getThemeColors(currentTheme);
+      ctx.textAlign = 'left';
+      ctx.font = 'bold 14px Courier New';
+      ctx.fillStyle = zoneColors[currentTheme] || '#888';
+      ctx.fillText(`ZONE: ${themeColors.name.toUpperCase()}`, 20, baseY + 20);
+
+      ctx.font = '12px Courier New';
+      ctx.fillStyle = '#666';
+      ctx.fillText(`LEVEL ${currentLevel}  •  SPEED x${difficulty.toFixed(1)}`, 20, baseY + 40);
+
+      // Lives display
+      let livesStr = '';
+      for (let i = 0; i < lives; i++) livesStr += '♥ ';
+      ctx.fillStyle = '#f44';
+      ctx.fillText(livesStr, 20, baseY + 60);
+
+      // Funny quote — center
+      ctx.textAlign = 'center';
+      ctx.font = 'italic 13px Courier New';
+      ctx.fillStyle = '#666';
+      const quote = getQuoteForLevel(currentLevel);
+      ctx.fillText(`"${quote}"`, canvas.width / 2, baseY + 30);
+
+      // Distance — center below quote
+      ctx.font = '11px Courier New';
+      ctx.fillStyle = '#555';
+      const distKm = (distanceTraveled / 1000).toFixed(1);
+      ctx.fillText(`${distKm} KM TRAVELED`, canvas.width / 2, baseY + 55);
+
+      // Score — right side
+      ctx.textAlign = 'right';
+      ctx.font = 'bold 14px Courier New';
+      ctx.fillStyle = '#fff';
+      ctx.fillText(`SCORE: ${score}`, canvas.width - 20, baseY + 20);
+
+      ctx.font = '12px Courier New';
+      ctx.fillStyle = '#888';
+      ctx.fillText(`HIGH: ${highScore}`, canvas.width - 20, baseY + 40);
+
+      // Power-up status — right side
+      ctx.font = '11px Courier New';
+      if (player.hasShield) {
+        ctx.fillStyle = '#4af';
+        ctx.fillText('● SHIELD', canvas.width - 20, baseY + 60);
+      }
+      if (player.lightTimer > 0) {
+        ctx.fillStyle = '#ff0';
+        ctx.fillText('● LIGHT', canvas.width - (player.hasShield ? 90 : 20), baseY + 60);
+      }
+
+      ctx.textAlign = 'left';
     }
 
     // ============================================================
@@ -3041,44 +3193,216 @@
     function drawStartScreen() {
       ctx.fillStyle = '#000';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      drawStars();
 
-      // Background moon
-      const moonGlow = ctx.createRadialGradient(140, 90, 30, 140, 90, 60);
+      // Draw stars across the entire canvas on the landing screen
+      {
+        const theme = getThemeColors(getCurrentTheme());
+        const [r, g, b] = theme.starTint;
+        for (const star of stars) {
+          // Map star Y from game range to full canvas range
+          const normalizedY = (star.y + skyOffset) / (PLATFORM_Y - 40 + skyOffset);
+          const screenY = normalizedY * canvas.height;
+          const flicker = Math.sin(frameCount * 0.05 + star.x) * 0.2 + 0.8;
+          ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${star.brightness * flicker})`;
+          ctx.fillRect(star.x, screenY, star.size, star.size);
+        }
+        // Second pass offset for denser coverage
+        for (const star of stars) {
+          const normalizedY = (star.y + skyOffset) / (PLATFORM_Y - 40 + skyOffset);
+          const screenY = (1 - normalizedY) * canvas.height;
+          const flicker = Math.sin(frameCount * 0.03 + star.x * 1.5) * 0.2 + 0.8;
+          ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${star.brightness * flicker * 0.5})`;
+          ctx.fillRect((star.x + 400) % canvas.width, screenY, star.size, star.size);
+        }
+      }
+
+      // Decorative planets scattered across the landing screen (5x scale)
+      {
+        // Earth — top-right area
+        const ex = canvas.width - 140, ey = canvas.height * 0.10;
+        const eGlow = ctx.createRadialGradient(ex, ey, 110, ex, ey, 220);
+        eGlow.addColorStop(0, 'rgba(100, 150, 255, 0.12)');
+        eGlow.addColorStop(1, 'rgba(100, 150, 255, 0)');
+        ctx.fillStyle = eGlow;
+        ctx.beginPath(); ctx.arc(ex, ey, 220, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#1a3388';
+        ctx.beginPath(); ctx.arc(ex, ey, 110, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#2a7744';
+        ctx.beginPath(); ctx.arc(ex - 30, ey - 20, 40, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(ex + 45, ey + 30, 30, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(ex - 50, ey + 40, 20, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.15)';
+        ctx.beginPath(); ctx.arc(ex - 15, ey - 50, 30, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(ex + 40, ey - 20, 20, 0, Math.PI * 2); ctx.fill();
+
+        // Saturn with rings — bottom-left area
+        const sx = 120, sy = canvas.height * 0.80;
+        const sGlow = ctx.createRadialGradient(sx, sy, 90, sx, sy, 200);
+        sGlow.addColorStop(0, 'rgba(200, 170, 120, 0.1)');
+        sGlow.addColorStop(1, 'rgba(200, 170, 120, 0)');
+        ctx.fillStyle = sGlow;
+        ctx.beginPath(); ctx.arc(sx, sy, 200, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#aa8855';
+        ctx.beginPath(); ctx.arc(sx, sy, 90, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#997744';
+        ctx.fillRect(sx - 90, sy - 10, 180, 8);
+        ctx.fillStyle = '#bb9966';
+        ctx.fillRect(sx - 90, sy + 20, 180, 5);
+        ctx.fillStyle = '#aa8050';
+        ctx.fillRect(sx - 90, sy - 30, 180, 4);
+        ctx.strokeStyle = 'rgba(200, 180, 150, 0.4)';
+        ctx.lineWidth = 8;
+        ctx.beginPath(); ctx.ellipse(sx, sy, 150, 30, -0.2, 0, Math.PI * 2); ctx.stroke();
+        ctx.strokeStyle = 'rgba(180, 160, 130, 0.25)';
+        ctx.lineWidth = 5;
+        ctx.beginPath(); ctx.ellipse(sx, sy, 180, 40, -0.2, 0, Math.PI * 2); ctx.stroke();
+        ctx.strokeStyle = 'rgba(160, 140, 110, 0.15)';
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.ellipse(sx, sy, 130, 22, -0.2, 0, Math.PI * 2); ctx.stroke();
+
+        // Mars — mid-right
+        const mx = canvas.width - 60, my = canvas.height * 0.52;
+        const mGlow = ctx.createRadialGradient(mx, my, 50, mx, my, 110);
+        mGlow.addColorStop(0, 'rgba(200, 100, 60, 0.1)');
+        mGlow.addColorStop(1, 'rgba(200, 100, 60, 0)');
+        ctx.fillStyle = mGlow;
+        ctx.beginPath(); ctx.arc(mx, my, 110, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#aa4422';
+        ctx.beginPath(); ctx.arc(mx, my, 50, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#884020';
+        ctx.beginPath(); ctx.arc(mx - 15, my - 10, 15, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(mx + 20, my + 10, 10, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(mx - 5, my + 20, 8, 0, Math.PI * 2); ctx.fill();
+        // Polar ice cap
+        ctx.fillStyle = 'rgba(255,255,255,0.2)';
+        ctx.beginPath(); ctx.arc(mx, my - 42, 18, 0, Math.PI, true); ctx.fill();
+
+        // Jupiter — left side ~30% down
+        const jx = 50, jy = canvas.height * 0.30, jr = 140;
+        const jGlow = ctx.createRadialGradient(jx, jy, jr, jx, jy, jr + 80);
+        jGlow.addColorStop(0, 'rgba(200, 160, 100, 0.1)');
+        jGlow.addColorStop(1, 'rgba(200, 160, 100, 0)');
+        ctx.fillStyle = jGlow;
+        ctx.beginPath(); ctx.arc(jx, jy, jr + 80, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#c49050';
+        ctx.beginPath(); ctx.arc(jx, jy, jr, 0, Math.PI * 2); ctx.fill();
+        // Bands
+        ctx.fillStyle = '#a07040';
+        ctx.fillRect(jx - jr, jy - 40, jr * 2, 12);
+        ctx.fillStyle = '#d4a060';
+        ctx.fillRect(jx - jr, jy + 10, jr * 2, 16);
+        ctx.fillStyle = '#b08050';
+        ctx.fillRect(jx - jr, jy + 50, jr * 2, 8);
+        ctx.fillStyle = '#c89860';
+        ctx.fillRect(jx - jr, jy - 70, jr * 2, 6);
+        ctx.fillStyle = '#a87848';
+        ctx.fillRect(jx - jr, jy + 80, jr * 2, 10);
+        // Great Red Spot
+        ctx.fillStyle = '#c04030';
+        ctx.beginPath(); ctx.ellipse(jx + 40, jy + 25, 30, 20, 0.1, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#d05040';
+        ctx.beginPath(); ctx.ellipse(jx + 40, jy + 25, 18, 12, 0.1, 0, Math.PI * 2); ctx.fill();
+
+        // Europa — icy, top-left
+        const erx = 350, ery = canvas.height * 0.06, err = 40;
+        const erGlow = ctx.createRadialGradient(erx, ery, err, erx, ery, err + 50);
+        erGlow.addColorStop(0, 'rgba(150, 200, 255, 0.1)');
+        erGlow.addColorStop(1, 'rgba(150, 200, 255, 0)');
+        ctx.fillStyle = erGlow;
+        ctx.beginPath(); ctx.arc(erx, ery, err + 50, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#b8ccdd';
+        ctx.beginPath(); ctx.arc(erx, ery, err, 0, Math.PI * 2); ctx.fill();
+        // Ice cracks
+        ctx.strokeStyle = 'rgba(100, 160, 200, 0.5)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(erx - 30, ery - 10); ctx.lineTo(erx + 25, ery + 15); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(erx - 10, ery - 30); ctx.lineTo(erx + 15, ery + 30); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(erx - 25, ery + 15); ctx.lineTo(erx + 20, ery - 5); ctx.stroke();
+        ctx.strokeStyle = 'rgba(80, 140, 180, 0.3)';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(erx + 10, ery - 25); ctx.lineTo(erx - 15, ery + 20); ctx.stroke();
+
+        // Titan — orange, bottom-right ~88% down
+        const tx = canvas.width - 200, ty = canvas.height * 0.88, tr = 70;
+        const tGlow = ctx.createRadialGradient(tx, ty, tr, tx, ty, tr + 60);
+        tGlow.addColorStop(0, 'rgba(220, 180, 80, 0.1)');
+        tGlow.addColorStop(1, 'rgba(220, 180, 80, 0)');
+        ctx.fillStyle = tGlow;
+        ctx.beginPath(); ctx.arc(tx, ty, tr + 60, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#bb8820';
+        ctx.beginPath(); ctx.arc(tx, ty, tr, 0, Math.PI * 2); ctx.fill();
+        // Haze atmosphere
+        ctx.fillStyle = 'rgba(220, 180, 60, 0.12)';
+        ctx.beginPath(); ctx.arc(tx, ty, tr + 15, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#aa7718';
+        ctx.fillRect(tx - tr, ty - 5, tr * 2, 8);
+        ctx.fillStyle = '#cc9930';
+        ctx.fillRect(tx - tr, ty + 20, tr * 2, 5);
+        ctx.fillStyle = '#997015';
+        ctx.fillRect(tx - tr, ty - 25, tr * 2, 4);
+
+        // Pluto — mid-left ~65% down
+        const ppx = 250, ppy = canvas.height * 0.65, pr = 30;
+        ctx.fillStyle = 'rgba(140, 140, 180, 0.08)';
+        ctx.beginPath(); ctx.arc(ppx, ppy, pr + 35, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#7a7a9a';
+        ctx.beginPath(); ctx.arc(ppx, ppy, pr, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#6a6a88';
+        ctx.beginPath(); ctx.arc(ppx - 10, ppy - 5, 10, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(ppx + 12, ppy + 8, 7, 0, Math.PI * 2); ctx.fill();
+        // Charon (companion)
+        ctx.fillStyle = '#8888aa';
+        ctx.beginPath(); ctx.arc(ppx + 55, ppy - 15, 12, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#777799';
+        ctx.beginPath(); ctx.arc(ppx + 53, ppy - 18, 4, 0, Math.PI * 2); ctx.fill();
+      }
+
+      // Y offset to center content vertically in any canvas height
+      const contentHeight = 500;
+      const OY = Math.max(20, Math.floor((canvas.height - contentHeight) / 2));
+
+      // Background moon (3x size — 200% increase)
+      const moonGlow = ctx.createRadialGradient(140, OY + 90, 90, 140, OY + 90, 180);
       moonGlow.addColorStop(0, 'rgba(200, 200, 220, 0.12)');
       moonGlow.addColorStop(1, 'rgba(200, 200, 220, 0)');
       ctx.fillStyle = moonGlow;
       ctx.beginPath();
-      ctx.arc(140, 90, 60, 0, Math.PI * 2);
+      ctx.arc(140, OY + 90, 180, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = '#ccc';
       ctx.beginPath();
-      ctx.arc(140, 90, 30, 0, Math.PI * 2);
+      ctx.arc(140, OY + 90, 90, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = '#aaa';
       ctx.beginPath();
-      ctx.arc(130, 82, 6, 0, Math.PI * 2);
+      ctx.arc(110, OY + 66, 18, 0, Math.PI * 2);
       ctx.fill();
       ctx.beginPath();
-      ctx.arc(148, 95, 4, 0, Math.PI * 2);
+      ctx.arc(164, OY + 105, 12, 0, Math.PI * 2);
       ctx.fill();
       ctx.beginPath();
-      ctx.arc(135, 100, 5, 0, Math.PI * 2);
+      ctx.arc(125, OY + 120, 15, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(170, OY + 60, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(145, OY + 140, 10, 0, Math.PI * 2);
       ctx.fill();
 
       // Title
       ctx.fillStyle = '#f44';
       ctx.font = 'bold 42px Courier New';
       ctx.textAlign = 'center';
-      ctx.fillText('MOON PATROL', canvas.width / 2, 90);
+      ctx.fillText('MOON PATROL', canvas.width / 2, OY + 90);
 
       ctx.fillStyle = '#ff0';
       ctx.font = 'bold 24px Courier New';
-      ctx.fillText('DARK FRONTIER', canvas.width / 2, 120);
+      ctx.fillText('DARK FRONTIER', canvas.width / 2, OY + 120);
 
       // Animated rover
       const demoX = (frameCount * 2) % (canvas.width + 100) - 50;
-      const demoY = 155;
+      const demoY = OY + 155;
       ctx.fillStyle = '#d44';
       ctx.fillRect(demoX + 5, demoY + 2, 50, 20);
       ctx.fillStyle = '#e66';
@@ -3094,11 +3418,19 @@
       // Controls
       ctx.fillStyle = '#aaa';
       ctx.font = '15px Courier New';
-      ctx.fillText('Controls:', canvas.width / 2, 210);
+      ctx.fillText('Controls:', canvas.width / 2, OY + 210);
 
       ctx.fillStyle = '#ddd';
       ctx.font = '13px Courier New';
-      const controls = [
+      const isMobile = 'ontouchstart' in window;
+      const controls = isMobile ? [
+        'TAP        -  Jump',
+        'SWIPE UP   -  Upper lane',
+        'SWIPE DOWN -  Lower lane',
+        'SWIPE LEFT -  Move left',
+        'SWIPE RIGHT-  Move right',
+        'SHOOT BTN  -  Fire laser'
+      ] : [
         'SPACE      -  Jump',
         'UP / DOWN  -  Switch lanes',
         'LEFT/RIGHT -  Move rover',
@@ -3108,71 +3440,76 @@
         'C          -  Colorblind mode'
       ];
       controls.forEach((text, i) => {
-        ctx.fillText(text, canvas.width / 2, 232 + i * 20);
+        ctx.fillText(text, canvas.width / 2, OY + 232 + i * 20);
       });
 
       ctx.fillStyle = '#ff0';
       ctx.font = '13px Courier New';
-      ctx.fillText('Collect L for Light | S for Shield', canvas.width / 2, 380);
+      ctx.fillText('Collect L for Light | S for Shield', canvas.width / 2, OY + 380);
 
       ctx.fillStyle = '#0f0';
-      ctx.fillText('Dodge closely for COMBO | Shoot rocks & UFOs!', canvas.width / 2, 400);
+      ctx.fillText('Dodge closely for COMBO | Shoot rocks & UFOs!', canvas.width / 2, OY + 400);
 
       ctx.fillStyle = '#f44';
-      ctx.fillText('3 lives - survive as long as you can!', canvas.width / 2, 420);
-
-      const blink = Math.sin(frameCount * 0.05) > 0;
+      ctx.fillText('3 lives - survive as long as you can!', canvas.width / 2, OY + 420);
 
       if (!showLeaderboard) {
-        if (blink) {
-          ctx.fillStyle = '#fff';
-          ctx.font = 'bold 20px Courier New';
-          ctx.fillText('PRESS ENTER TO START', canvas.width / 2, 455);
+        // Desktop-only: show keyboard prompts
+        const isMobile = 'ontouchstart' in window;
+        if (!isMobile) {
+          const blink = Math.sin(frameCount * 0.05) > 0;
+          if (blink) {
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 20px Courier New';
+            ctx.fillText('PRESS ENTER TO START', canvas.width / 2, OY + 455);
+          }
+          ctx.fillStyle = '#666';
+          ctx.font = '12px Courier New';
+          ctx.fillText('TAB - Leaderboard', canvas.width / 2, OY + 478);
         }
-
-        ctx.fillStyle = '#666';
-        ctx.font = '12px Courier New';
-        ctx.fillText('TAB - Leaderboard', canvas.width / 2, 478);
 
         if (highScore > 0) {
           ctx.fillStyle = '#888';
           ctx.font = '14px Courier New';
-          ctx.fillText(`HIGH SCORE: ${highScore}`, canvas.width / 2, 496);
+          ctx.fillText(`HIGH SCORE: ${highScore}`, canvas.width / 2, OY + 496);
         }
       } else {
         // Full leaderboard overlay
         ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.save();
+        ctx.translate(0, skyOffset);
         drawStars();
+        ctx.restore();
 
         ctx.fillStyle = '#fc0';
         ctx.font = 'bold 30px Courier New';
         ctx.textAlign = 'center';
-        ctx.fillText('LEADERBOARD', canvas.width / 2, 70);
+        ctx.fillText('LEADERBOARD', canvas.width / 2, OY + 70);
 
         // Decorative lines
         ctx.strokeStyle = '#fc0';
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.moveTo(canvas.width / 2 - 150, 80);
-        ctx.lineTo(canvas.width / 2 + 150, 80);
+        ctx.moveTo(canvas.width / 2 - 150, OY + 80);
+        ctx.lineTo(canvas.width / 2 + 150, OY + 80);
         ctx.stroke();
 
         // Column headers
         ctx.fillStyle = '#888';
         ctx.font = '12px Courier New';
         ctx.textAlign = 'left';
-        ctx.fillText('RANK', canvas.width / 2 - 160, 110);
-        ctx.fillText('NAME', canvas.width / 2 - 80, 110);
+        ctx.fillText('RANK', canvas.width / 2 - 160, OY + 110);
+        ctx.fillText('NAME', canvas.width / 2 - 80, OY + 110);
         ctx.textAlign = 'right';
-        ctx.fillText('SCORE', canvas.width / 2 + 80, 110);
-        ctx.fillText('DATE', canvas.width / 2 + 170, 110);
+        ctx.fillText('SCORE', canvas.width / 2 + 80, OY + 110);
+        ctx.fillText('DATE', canvas.width / 2 + 170, OY + 110);
 
         const lb = getLeaderboard();
         if (lb.length > 0) {
           for (let i = 0; i < Math.min(lb.length, 10); i++) {
             const entry = lb[i];
-            const y = 140 + i * 28;
+            const y = OY + 140 + i * 28;
             const medal = i === 0 ? '1st' : i === 1 ? '2nd' : i === 2 ? '3rd' : `${i+1}th`;
 
             ctx.fillStyle = i === 0 ? '#fc0' : i < 3 ? '#ca8' : '#aaa';
@@ -3190,19 +3527,23 @@
           ctx.fillStyle = '#666';
           ctx.font = '16px Courier New';
           ctx.textAlign = 'center';
-          ctx.fillText('No scores yet! Play to set a record!', canvas.width / 2, 180);
+          ctx.fillText('No scores yet! Play to set a record!', canvas.width / 2, OY + 180);
         }
 
-        ctx.fillStyle = '#888';
-        ctx.font = '13px Courier New';
-        ctx.textAlign = 'center';
-        ctx.fillText('Press TAB to go back  |  ENTER to start', canvas.width / 2, 450);
+        if (!('ontouchstart' in window)) {
+          ctx.fillStyle = '#888';
+          ctx.font = '13px Courier New';
+          ctx.textAlign = 'center';
+          ctx.fillText('Press TAB to go back  |  ENTER to start', canvas.width / 2, OY + 450);
+        }
       }
 
       drawCRT();
     }
 
     function drawGameOverScreen() {
+      const contentHeight = 420;
+      const OY = Math.max(20, Math.floor((canvas.height - contentHeight) / 2));
       stopMusic();
       ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -3212,7 +3553,7 @@
         ctx.fillStyle = '#ff0';
         ctx.font = 'bold 28px Courier New';
         ctx.textAlign = 'center';
-        ctx.fillText('LEADERBOARD', canvas.width / 2, 60);
+        ctx.fillText('LEADERBOARD', canvas.width / 2, OY + 60);
 
         const lb = getLeaderboard();
         ctx.font = '14px Courier New';
@@ -3220,22 +3561,24 @@
           const entry = lb[i];
           const isCurrentScore = !nameSubmitted ? false : (entry.score === score && entry.name === nameInput);
           ctx.fillStyle = isCurrentScore ? '#ff0' : (i < 3 ? '#fc0' : '#aaa');
-          ctx.fillText(`${(i + 1).toString().padStart(2, ' ')}. ${entry.name.padEnd(8, ' ')}  ${entry.score.toString().padStart(6, ' ')}  ${entry.date}`, canvas.width / 2, 95 + i * 24);
+          ctx.fillText(`${(i + 1).toString().padStart(2, ' ')}. ${entry.name.padEnd(8, ' ')}  ${entry.score.toString().padStart(6, ' ')}  ${entry.date}`, canvas.width / 2, OY + 95 + i * 24);
         }
         if (lb.length === 0) {
           ctx.fillStyle = '#666';
-          ctx.fillText('No scores yet!', canvas.width / 2, 120);
+          ctx.fillText('No scores yet!', canvas.width / 2, OY + 120);
         }
 
-        ctx.fillStyle = '#888';
-        ctx.font = '13px Courier New';
-        ctx.fillText('Press TAB to go back', canvas.width / 2, 360);
+        if (!('ontouchstart' in window)) {
+          ctx.fillStyle = '#888';
+          ctx.font = '13px Courier New';
+          ctx.fillText('Press TAB to go back', canvas.width / 2, OY + 360);
 
-        const blink = Math.sin(frameCount * 0.05) > 0;
-        if (blink && nameSubmitted) {
-          ctx.fillStyle = '#fff';
-          ctx.font = 'bold 16px Courier New';
-          ctx.fillText('PRESS ENTER TO PLAY AGAIN', canvas.width / 2, 400);
+          const blink = Math.sin(frameCount * 0.05) > 0;
+          if (blink && nameSubmitted) {
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 16px Courier New';
+            ctx.fillText('PRESS ENTER TO PLAY AGAIN', canvas.width / 2, OY + 400);
+          }
         }
         return;
       }
@@ -3243,68 +3586,72 @@
       ctx.fillStyle = '#f44';
       ctx.font = 'bold 48px Courier New';
       ctx.textAlign = 'center';
-      ctx.fillText('GAME OVER', canvas.width / 2, 100);
+      ctx.fillText('GAME OVER', canvas.width / 2, OY + 100);
 
       ctx.fillStyle = '#fff';
       ctx.font = '24px Courier New';
-      ctx.fillText(`SCORE: ${score}`, canvas.width / 2, 150);
+      ctx.fillText(`SCORE: ${score}`, canvas.width / 2, OY + 150);
 
       const themeColors = getThemeColors(getCurrentTheme());
       ctx.fillStyle = '#aaa';
       ctx.font = '14px Courier New';
-      ctx.fillText(`Level ${currentLevel} - ${themeColors.name}  |  ${(distanceTraveled / 1000).toFixed(1)} KM`, canvas.width / 2, 180);
+      ctx.fillText(`Level ${currentLevel} - ${themeColors.name}  |  ${(distanceTraveled / 1000).toFixed(1)} KM`, canvas.width / 2, OY + 180);
 
       // Kill stats
       ctx.fillStyle = '#f80';
       ctx.font = '14px Courier New';
-      ctx.fillText(`UFOs destroyed: ${ufosDestroyed}  |  Rocks blasted: ${rocksDestroyed}`, canvas.width / 2, 205);
+      ctx.fillText(`UFOs destroyed: ${ufosDestroyed}  |  Rocks blasted: ${rocksDestroyed}`, canvas.width / 2, OY + 205);
 
       if (score >= highScore && score > 0) {
         ctx.fillStyle = '#ff0';
         ctx.font = 'bold 18px Courier New';
-        ctx.fillText('NEW HIGH SCORE!', canvas.width / 2, 235);
+        ctx.fillText('NEW HIGH SCORE!', canvas.width / 2, OY + 235);
       }
 
-      // Name entry
-      if (!nameSubmitted) {
+      // Name entry — desktop only (mobile uses TAP TO RESTART button)
+      if (!nameSubmitted && !('ontouchstart' in window)) {
         ctx.fillStyle = '#8cf';
         ctx.font = '16px Courier New';
-        ctx.fillText('ENTER YOUR NAME:', canvas.width / 2, 280);
+        ctx.fillText('ENTER YOUR NAME:', canvas.width / 2, OY + 280);
 
         ctx.fillStyle = '#222';
-        ctx.fillRect(canvas.width / 2 - 80, 290, 160, 30);
+        ctx.fillRect(canvas.width / 2 - 80, OY + 290, 160, 30);
         ctx.strokeStyle = '#8cf';
         ctx.lineWidth = 2;
-        ctx.strokeRect(canvas.width / 2 - 80, 290, 160, 30);
+        ctx.strokeRect(canvas.width / 2 - 80, OY + 290, 160, 30);
 
         ctx.fillStyle = '#fff';
         ctx.font = 'bold 18px Courier New';
         const cursor = Math.sin(frameCount * 0.1) > 0 ? '_' : '';
-        ctx.fillText(nameInput + cursor, canvas.width / 2, 312);
+        ctx.fillText(nameInput + cursor, canvas.width / 2, OY + 312);
 
         ctx.fillStyle = '#888';
         ctx.font = '12px Courier New';
-        ctx.fillText('Type name, press ENTER to save', canvas.width / 2, 340);
-      } else {
+        ctx.fillText('Type name, press ENTER to save', canvas.width / 2, OY + 340);
+      } else if (!('ontouchstart' in window)) {
         ctx.fillStyle = '#0f0';
         ctx.font = 'bold 14px Courier New';
-        ctx.fillText(`Score saved as "${nameInput}"!`, canvas.width / 2, 280);
+        ctx.fillText(`Score saved as "${nameInput}"!`, canvas.width / 2, OY + 280);
 
         const blink = Math.sin(frameCount * 0.05) > 0;
         if (blink) {
           ctx.fillStyle = '#fff';
           ctx.font = 'bold 18px Courier New';
-          ctx.fillText('PRESS ENTER TO RESTART', canvas.width / 2, 320);
+          ctx.fillText('PRESS ENTER TO RESTART', canvas.width / 2, OY + 320);
         }
       }
 
-      ctx.fillStyle = '#666';
-      ctx.font = '13px Courier New';
-      ctx.fillText('Press TAB to view leaderboard', canvas.width / 2, 380);
-
+      // High score (always shown)
       ctx.fillStyle = '#fff';
       ctx.font = '14px Courier New';
-      ctx.fillText(`HIGH SCORE: ${highScore}`, canvas.width / 2, 410);
+      ctx.textAlign = 'center';
+      ctx.fillText(`HIGH SCORE: ${highScore}`, canvas.width / 2, OY + 280);
+
+      if (!('ontouchstart' in window)) {
+        ctx.fillStyle = '#666';
+        ctx.font = '13px Courier New';
+        ctx.fillText('Press TAB to view leaderboard', canvas.width / 2, OY + 380);
+      }
     }
 
     // ============================================================
@@ -3408,8 +3755,13 @@
       ctx.fillStyle = theme.sky;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+      // Translate game rendering down by skyOffset so game area sits below extended sky
+      ctx.save();
+      ctx.translate(0, skyOffset);
+
       if (gameState === 'start') {
         updateStars();
+        ctx.restore(); // restore translate before overlay
         drawStartScreen();
 
       } else if (gameState === 'playing') {
@@ -3435,6 +3787,8 @@
           drawWarningIndicators();
           drawHUD();
           drawMinimap();
+          drawGroundHUD();
+          ctx.restore(); // restore translate before overlay
           drawPauseScreen();
           drawCRT();
         } else {
@@ -3508,6 +3862,8 @@
         drawWarningIndicators();
         drawHUD();
         drawMinimap();
+        drawGroundHUD();
+        ctx.restore(); // restore translate before full-canvas effects
         drawGlitch();
         drawHurtFlash();
         drawCRT();
@@ -3528,6 +3884,7 @@
         drawExplosion();
         drawRoverDebris();
         drawDarkness();
+        ctx.restore(); // restore translate before full-canvas effects
         drawGlitch();
         drawHurtFlash();
         drawCRT();
@@ -3547,6 +3904,7 @@
         drawUFOs();
         drawEnemyBullets();
         drawDarkness();
+        ctx.restore(); // restore translate before overlays
         drawGlitch();
         drawHurtFlash();
         drawGameOverScreen();
@@ -3571,70 +3929,39 @@
     // MOBILE TOUCH CONTROLS
     // ============================================================
     (function addMobileControls() {
-      // Scale canvas for mobile
-      function resizeCanvas() {
-        const w = window.innerWidth;
-        const h = window.innerHeight;
-        const scale = Math.min(w / canvas.width, (h * 0.65) / canvas.height);
-        canvas.style.width = (canvas.width * scale) + 'px';
-        canvas.style.height = (canvas.height * scale) + 'px';
-        canvas.style.border = 'none';
-      }
-      resizeCanvas();
-      window.addEventListener('resize', resizeCanvas);
+      // Canvas resizing is handled by fitCanvasToScreen() above
 
-      // Create touch controls container
+      // Create touch controls — shoot button only + gesture overlay
       const controls = document.createElement('div');
       controls.id = 'touch-controls';
       controls.innerHTML = `
         <style>
           #touch-controls {
             position: fixed; bottom: 0; left: 0; right: 0;
-            height: 35vh; display: flex; justify-content: space-between;
-            padding: 10px 16px 20px; box-sizing: border-box;
+            display: flex; justify-content: flex-end;
+            align-items: flex-end;
+            padding: 10px 16px calc(env(safe-area-inset-bottom, 0px) + 20px); box-sizing: border-box;
             pointer-events: none; z-index: 999;
           }
-          .ctrl-group { display: flex; flex-direction: column; gap: 8px; pointer-events: auto; }
-          .ctrl-row { display: flex; gap: 8px; }
           .ctrl-btn {
-            width: 64px; height: 64px; border-radius: 16px;
-            background: rgba(124, 92, 252, 0.3); border: 2px solid rgba(124, 92, 252, 0.6);
-            color: #fff; font-size: 24px; font-weight: 700;
+            width: 80px; height: 80px; border-radius: 40px;
+            background: rgba(255, 77, 106, 0.3); border: 2px solid rgba(255, 77, 106, 0.6);
+            color: #fff; font-size: 14px; font-weight: 700; letter-spacing: 1px;
             display: flex; align-items: center; justify-content: center;
             user-select: none; -webkit-user-select: none;
             -webkit-tap-highlight-color: transparent;
             pointer-events: auto; touch-action: none;
           }
-          .ctrl-btn:active, .ctrl-btn.active { background: rgba(124, 92, 252, 0.7); }
-          .ctrl-btn.wide { width: 138px; }
-          .ctrl-btn.action { background: rgba(255, 77, 106, 0.3); border-color: rgba(255, 77, 106, 0.6); }
-          .ctrl-btn.action:active, .ctrl-btn.action.active { background: rgba(255, 77, 106, 0.7); }
+          .ctrl-btn:active, .ctrl-btn.active { background: rgba(255, 77, 106, 0.7); }
           .ctrl-btn.start-btn {
-            width: 100%; height: 56px; font-size: 20px; margin-top: 8px;
+            width: 200px; height: 56px; font-size: 20px; border-radius: 16px;
             background: rgba(52, 211, 153, 0.3); border-color: rgba(52, 211, 153, 0.6);
           }
           .ctrl-btn.start-btn:active { background: rgba(52, 211, 153, 0.7); }
-          #mobile-start { position: fixed; bottom: 40vh; left: 50%; transform: translateX(-50%);
-            pointer-events: auto; z-index: 1000; width: 200px; }
+          #mobile-start { position: fixed; bottom: 12vh; left: 50%; transform: translateX(-50%);
+            pointer-events: auto; z-index: 1000; }
         </style>
-        <div class="ctrl-group">
-          <div class="ctrl-row">
-            <div class="ctrl-btn" id="btn-up">▲</div>
-          </div>
-          <div class="ctrl-row">
-            <div class="ctrl-btn" id="btn-left">◀</div>
-            <div class="ctrl-btn" id="btn-down">▼</div>
-            <div class="ctrl-btn" id="btn-right">▶</div>
-          </div>
-        </div>
-        <div class="ctrl-group">
-          <div class="ctrl-row">
-            <div class="ctrl-btn action wide" id="btn-jump">JUMP</div>
-          </div>
-          <div class="ctrl-row">
-            <div class="ctrl-btn action wide" id="btn-shoot">SHOOT</div>
-          </div>
-        </div>
+        <div class="ctrl-btn" id="btn-shoot">SHOOT</div>
         <div class="ctrl-btn start-btn" id="mobile-start">TAP TO START</div>
       `;
       document.body.appendChild(controls);
@@ -3648,36 +3975,107 @@
         keys[code] = down;
       }
 
-      // Button mapping
-      const btnMap = {
-        'btn-up': 'ArrowUp',
-        'btn-down': 'ArrowDown',
-        'btn-left': 'ArrowLeft',
-        'btn-right': 'ArrowRight',
-        'btn-jump': 'Space',
-        'btn-shoot': 'KeyX',
-      };
-
-      // Touch handlers with multi-touch support
-      Object.entries(btnMap).forEach(([id, code]) => {
-        const btn = document.getElementById(id);
-        btn.addEventListener('touchstart', (e) => {
-          e.preventDefault();
-          btn.classList.add('active');
-          simKey(code, true);
-          if (code === 'Space') playerJump();
-          if (code === 'KeyX') playerShoot();
-        }, { passive: false });
-        btn.addEventListener('touchend', (e) => {
-          e.preventDefault();
-          btn.classList.remove('active');
-          simKey(code, false);
-        }, { passive: false });
-        btn.addEventListener('touchcancel', (e) => {
-          btn.classList.remove('active');
-          simKey(code, false);
-        });
+      // Shoot button
+      const shootBtn = document.getElementById('btn-shoot');
+      shootBtn.style.display = 'none'; // Hidden on landing screen
+      shootBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        shootBtn.classList.add('active');
+        simKey('KeyX', true);
+        playerShoot();
+      }, { passive: false });
+      shootBtn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        shootBtn.classList.remove('active');
+        simKey('KeyX', false);
+      }, { passive: false });
+      shootBtn.addEventListener('touchcancel', () => {
+        shootBtn.classList.remove('active');
+        simKey('KeyX', false);
       });
+
+      // Gesture controls on canvas: tap = jump, swipe = move/lane
+      let touchStartX = 0;
+      let touchStartY = 0;
+      let touchStartTime = 0;
+      let touchMoved = false;
+      const SWIPE_THRESHOLD = 30;
+      const TAP_MAX_TIME = 250;
+
+      canvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        const t = e.touches[0];
+        touchStartX = t.clientX;
+        touchStartY = t.clientY;
+        touchStartTime = Date.now();
+        touchMoved = false;
+      }, { passive: false });
+
+      canvas.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        const t = e.touches[0];
+        const dx = t.clientX - touchStartX;
+        const dy = t.clientY - touchStartY;
+        if (Math.abs(dx) > 10 || Math.abs(dy) > 10) touchMoved = true;
+
+        // Continuous left/right movement while swiping
+        if (Math.abs(dx) > SWIPE_THRESHOLD && Math.abs(dx) > Math.abs(dy)) {
+          if (dx > 0) {
+            keys['ArrowRight'] = true;
+            keys['ArrowLeft'] = false;
+          } else {
+            keys['ArrowLeft'] = true;
+            keys['ArrowRight'] = false;
+          }
+        }
+      }, { passive: false });
+
+      canvas.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        const elapsed = Date.now() - touchStartTime;
+        const t = e.changedTouches[0];
+        const dx = t.clientX - touchStartX;
+        const dy = t.clientY - touchStartY;
+
+        // Stop horizontal movement
+        keys['ArrowLeft'] = false;
+        keys['ArrowRight'] = false;
+
+        if (!touchMoved && elapsed < TAP_MAX_TIME) {
+          // Tap = jump
+          if (gameState === 'playing') {
+            playerJump();
+          } else if (gameState === 'start') {
+            initAudio();
+            showLeaderboard = false;
+            startGame();
+            document.getElementById('mobile-start').style.display = 'none';
+          } else if (gameState === 'gameover') {
+            initAudio();
+            startGame();
+            document.getElementById('mobile-start').style.display = 'none';
+          }
+        } else if (touchMoved) {
+          const absDx = Math.abs(dx);
+          const absDy = Math.abs(dy);
+          if (absDy > SWIPE_THRESHOLD && absDy > absDx) {
+            // Vertical swipe = lane switch
+            if (dy < 0 && gameState === 'playing') {
+              // Swipe up
+              if (player.targetLane !== 'upper') {
+                player.targetLane = 'upper';
+                sfxLaneSwitch();
+              }
+            } else if (dy > 0 && gameState === 'playing') {
+              // Swipe down
+              if (player.targetLane !== 'ground') {
+                player.targetLane = 'ground';
+                sfxLaneSwitch();
+              }
+            }
+          }
+        }
+      }, { passive: false });
 
       // Start button
       const startBtn = document.getElementById('mobile-start');
@@ -3705,18 +4103,16 @@
         }
       });
 
-      // Show start button on game over
-      const origLoop = gameLoop;
+      // Show/hide buttons based on game state
       setInterval(() => {
         if (gameState === 'start' || gameState === 'gameover') {
           startBtn.style.display = 'flex';
           startBtn.textContent = gameState === 'start' ? 'TAP TO START' : 'TAP TO RESTART';
+          shootBtn.style.display = 'none';
+        } else {
+          shootBtn.style.display = 'flex';
         }
       }, 500);
-
-      // Prevent default touch on canvas
-      canvas.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
-      canvas.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
     })();
   </script>
 </body>

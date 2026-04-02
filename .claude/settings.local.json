@@ -11,7 +11,8 @@
       "Bash(eas build:*)",
       "Bash(eas whoami:*)",
       "Bash(eas init:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(ls -la \"/Users/Xspot/Desktop/Work/Projects/Prodvote/app/\\(admin\\)/\")"
     ]
   }
 }

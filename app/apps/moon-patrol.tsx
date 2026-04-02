@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { View, StyleSheet, Platform, ActivityIndicator, Text } from 'react-native';
+import { useTheme, Theme } from '../../lib/theme';
 
 let WebView: any = null;
 let Asset: any = null;
@@ -10,6 +11,7 @@ if (Platform.OS !== 'web') {
 }
 
 export default function MoonPatrolScreen() {
+  const { theme } = useTheme();
   const webViewRef = useRef<any>(null);
   const [uri, setUri] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -35,9 +37,11 @@ export default function MoonPatrolScreen() {
     }
   }
 
+  const s = styles(theme);
+
   if (Platform.OS === 'web') {
     return (
-      <View style={styles.container}>
+      <View style={s.container}>
         <iframe
           src="/moon-patrol.html"
           style={{ flex: 1, width: '100%', height: '100%', border: 'none' } as any}
@@ -49,35 +53,35 @@ export default function MoonPatrolScreen() {
 
   if (!WebView || !Asset) {
     return (
-      <View style={[styles.container, styles.loading]}>
+      <View style={[s.container, s.loading]}>
         <Text style={{ fontSize: 48, marginBottom: 16 }}>🚀</Text>
-        <Text style={styles.errorText}>Moon Patrol requires a production build.{'\n'}Not available in Expo Go.</Text>
+        <Text style={s.errorText}>Moon Patrol requires a production build.{'\n'}Not available in Expo Go.</Text>
       </View>
     );
   }
 
   if (error) {
     return (
-      <View style={[styles.container, styles.loading]}>
-        <Text style={styles.errorText}>{error}</Text>
+      <View style={[s.container, s.loading]}>
+        <Text style={s.errorText}>{error}</Text>
       </View>
     );
   }
 
   if (!uri) {
     return (
-      <View style={[styles.container, styles.loading]}>
-        <ActivityIndicator size="large" color="#7c5cfc" />
+      <View style={[s.container, s.loading]}>
+        <ActivityIndicator size="large" color={theme.accent} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={s.gameContainer}>
       <WebView
         ref={webViewRef}
         source={{ uri }}
-        style={styles.webview}
+        style={s.webview}
         javaScriptEnabled
         domStorageEnabled
         allowsInlineMediaPlayback
@@ -94,8 +98,12 @@ export default function MoonPatrolScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = (t: Theme) => StyleSheet.create({
   container: {
+    flex: 1,
+    backgroundColor: t.bg,
+  },
+  gameContainer: {
     flex: 1,
     backgroundColor: '#000',
   },

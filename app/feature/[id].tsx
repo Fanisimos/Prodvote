@@ -5,12 +5,15 @@ import {
 } from 'react-native';
 import Watermark from '../../components/Watermark';
 import ReactionBar from '../../components/ReactionBar';
+import UserAvatar from '../../components/UserAvatar';
+import AwardBadge from '../../components/AwardBadge';
+import AwardPicker from '../../components/AwardPicker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../lib/AuthContext';
 import { notifyVoteMilestone } from '../../lib/notifications';
 import { useTheme, Theme } from '../../lib/theme';
-import { Feature, Comment } from '../../lib/types';
+import { Feature, Comment, FeatureAwardCount } from '../../lib/types';
 
 export default function FeatureDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -21,6 +24,8 @@ export default function FeatureDetailScreen() {
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [awards, setAwards] = useState<FeatureAwardCount[]>([]);
+  const [awardPickerOpen, setAwardPickerOpen] = useState(false);
   const { session, profile } = useAuthContext();
   const { theme } = useTheme();
 
@@ -37,6 +42,13 @@ export default function FeatureDetailScreen() {
       ...c, username: c.profiles?.username, avatar_url: c.profiles?.avatar_url, tier: c.profiles?.tier,
     }));
     setComments(mapped);
+    // Fetch awards
+    const { data: awardData } = await supabase
+      .from('feature_award_counts')
+      .select('*')
+      .eq('feature_id', id);
+    setAwards(awardData || []);
+
     if (session) {
       const { data: vote } = await supabase.from('votes')
         .select('id').eq('user_id', session.user.id).eq('feature_id', id).single();
@@ -115,12 +127,42 @@ export default function FeatureDetailScreen() {
 
         <ReactionBar featureId={feature.id} />
 
-        <TouchableOpacity style={[s.voteButton, hasVoted && s.voteButtonActive]} onPress={handleVote}>
-          <Text style={[s.voteArrow, hasVoted && s.voteArrowActive]}>▲</Text>
-          <Text style={[s.voteButtonText, hasVoted && s.voteButtonTextActive]}>
-            {hasVoted ? 'Voted' : 'Upvote'} · {feature.vote_count}
-          </Text>
-        </TouchableOpacity>
+        {/* Awards */}
+        {awards.length > 0 && (
+          <View style={s.awardsRow}>
+            {awards.map(a => (
+              <AwardBadge
+                key={a.award_type_id}
+                emoji={a.emoji}
+                count={a.count}
+                animation={a.animation}
+                color={a.color}
+                size={28}
+              />
+            ))}
+          </View>
+        )}
+
+        {/* Vote + Give Award row */}
+        <View style={s.actionRow}>
+          <TouchableOpacity style={[s.voteButton, hasVoted && s.voteButtonActive]} onPress={handleVote}>
+            <Text style={[s.voteArrow, hasVoted && s.voteArrowActive]}>▲</Text>
+            <Text style={[s.voteButtonText, hasVoted && s.voteButtonTextActive]}>
+              {hasVoted ? 'Voted' : 'Upvote'} · {feature.vote_count}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={s.giveAwardBtn} onPress={() => setAwardPickerOpen(true)}>
+            <Text style={{ fontSize: 18 }}>🏆</Text>
+            <Text style={s.giveAwardText}>Award</Text>
+          </TouchableOpacity>
+        </View>
+
+        <AwardPicker
+          featureId={feature.id}
+          visible={awardPickerOpen}
+          onClose={() => setAwardPickerOpen(false)}
+          onAwarded={() => fetchAll()}
+        />
 
         {feature.dev_response && (
           <View style={s.devResponse}>
@@ -134,9 +176,18 @@ export default function FeatureDetailScreen() {
           {comments.map(comment => (
             <View key={comment.id} style={[s.comment, comment.is_dev_reply && s.commentDev]}>
               <View style={s.commentHeader}>
-                <Text style={s.commentAuthor}>
-                  {comment.username || 'anon'}{comment.is_dev_reply && ' (Developer)'}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <UserAvatar
+                    username={comment.username || 'anon'}
+                    avatarUrl={(comment as any).avatar_url}
+                    size={28}
+                  />
+                  <TouchableOpacity onPress={() => router.push(`/user/${comment.username}` as any)}>
+                    <Text style={s.commentAuthor}>
+                      {comment.username || 'anon'}{comment.is_dev_reply && ' (Dev)'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
                 <Text style={s.commentTime}>{timeAgo(comment.created_at)}</Text>
               </View>
               <Text style={s.commentBody}>{comment.body}</Text>
@@ -197,11 +248,19 @@ const styles = (t: Theme) => StyleSheet.create({
   title: { fontSize: 24, fontWeight: '800', color: t.text, lineHeight: 30 },
   description: { fontSize: 15, color: t.textSecondary, lineHeight: 22 },
   authorText: { fontSize: 13, color: t.textMuted, marginTop: 4 },
+  awardsRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginTop: 16 },
+  actionRow: { flexDirection: 'row', gap: 10, marginTop: 20 },
   voteButton: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 8, backgroundColor: t.card, borderRadius: 14, padding: 14,
-    marginTop: 20, borderWidth: 1, borderColor: t.cardBorder,
+    borderWidth: 1, borderColor: t.cardBorder,
   },
+  giveAwardBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, backgroundColor: t.card, borderRadius: 14, paddingHorizontal: 18, paddingVertical: 14,
+    borderWidth: 1, borderColor: t.cardBorder,
+  },
+  giveAwardText: { fontSize: 14, fontWeight: '700', color: t.textMuted },
   voteButtonActive: { backgroundColor: t.accentLight, borderColor: t.accent },
   voteArrow: { fontSize: 18, color: t.textMuted },
   voteArrowActive: { color: t.accent },
