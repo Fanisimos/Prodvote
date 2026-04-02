@@ -26,16 +26,8 @@
     box-shadow: 0 4px 20px #7c5cfc66;
   }
   #final-score { color: #fbbf24; font-size: 32px; font-weight: 800; margin-bottom: 8px; }
-  #controls { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 20px; }
-  .ctrl-row { display: flex; gap: 8px; }
-  .ctrl-btn {
-    width: 56px; height: 56px; background: #241845; border: 1px solid #352858;
-    border-radius: 14px; color: #fff; font-size: 22px; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    -webkit-user-select: none; user-select: none;
-    box-shadow: 0 2px 8px #0004;
-  }
-  .ctrl-btn:active { background: #7c5cfc; transform: scale(0.95); }
+  #controls { display: none; }
+  #swipe-hint { color: #7a70a0; font-size: 12px; margin-top: 12px; letter-spacing: 1px; }
 </style>
 </head>
 <body>
@@ -44,18 +36,11 @@
   <div style="text-align:center"><div id="high-label">BEST</div><div id="high">0</div></div>
 </div>
 <canvas id="c"></canvas>
-<div id="controls">
-  <div class="ctrl-row"><button class="ctrl-btn" id="up">▲</button></div>
-  <div class="ctrl-row">
-    <button class="ctrl-btn" id="left">◀</button>
-    <button class="ctrl-btn" id="down">▼</button>
-    <button class="ctrl-btn" id="right">▶</button>
-  </div>
-</div>
+<div id="swipe-hint">SWIPE TO MOVE</div>
 
 <div id="overlay">
   <h1>🐍</h1>
-  <p id="overlay-msg">Eat the 🍎 to grow.<br>Don't hit the walls or yourself!</p>
+  <p id="overlay-msg">Eat the 🍎 to grow.<br>Swipe to move. Don't hit the walls or yourself!</p>
   <div id="final-score" style="display:none"></div>
   <button id="start-btn">Play</button>
 </div>
@@ -75,7 +60,7 @@ const overlayMsg = document.getElementById('overlay-msg');
 function resize() {
   const maxW = Math.min(window.innerWidth - 32, 360);
   const cols = Math.floor(maxW / CELL);
-  const rows = Math.floor((window.innerHeight * 0.52) / CELL);
+  const rows = Math.floor((window.innerHeight * 0.72) / CELL);
   canvas.width = cols * CELL;
   canvas.height = rows * CELL;
 }
@@ -243,12 +228,6 @@ document.addEventListener('keydown', e => {
   if (e.key === 'ArrowLeft' && dir.x !== 1) nextDir = { x: -1, y: 0 };
   if (e.key === 'ArrowRight' && dir.x !== -1) nextDir = { x: 1, y: 0 };
 });
-
-// Touch/button controls
-document.getElementById('up').addEventListener('touchstart', e => { e.preventDefault(); if (running && dir.y !== 1) nextDir = { x: 0, y: -1 }; });
-document.getElementById('down').addEventListener('touchstart', e => { e.preventDefault(); if (running && dir.y !== -1) nextDir = { x: 0, y: 1 }; });
-document.getElementById('left').addEventListener('touchstart', e => { e.preventDefault(); if (running && dir.x !== 1) nextDir = { x: -1, y: 0 }; });
-document.getElementById('right').addEventListener('touchstart', e => { e.preventDefault(); if (running && dir.x !== -1) nextDir = { x: 1, y: 0 }; });
 
 // Swipe controls
 let touchStartX, touchStartY;

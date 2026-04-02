@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { View, StyleSheet, Platform, ActivityIndicator, Text } from 'react-native';
+import { useNavigation } from 'expo-router';
 import { useTheme, Theme } from '../../lib/theme';
 
 let WebView: any = null;
@@ -10,11 +11,20 @@ if (Platform.OS !== 'web') {
   try { Asset = require('expo-asset').Asset; } catch {}
 }
 
-export default function MoonPatrolScreen() {
+export default function LunarPatrolScreen() {
   const { theme } = useTheme();
+  const navigation = useNavigation();
   const webViewRef = useRef<any>(null);
   const [uri, setUri] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Disable iOS swipe-back gesture so swipe-right controls the rover
+  useEffect(() => {
+    navigation.getParent()?.setOptions({ gestureEnabled: false });
+    return () => {
+      navigation.getParent()?.setOptions({ gestureEnabled: true });
+    };
+  }, [navigation]);
 
   useEffect(() => {
     if (Platform.OS !== 'web') {
@@ -24,7 +34,7 @@ export default function MoonPatrolScreen() {
 
   async function loadAsset() {
     try {
-      const asset = Asset.fromModule(require('../../assets/moon-patrol.html'));
+      const asset = Asset.fromModule(require('../../assets/lunar-patrol.html'));
       await asset.downloadAsync();
       if (asset.localUri) {
         setUri(asset.localUri);
@@ -32,7 +42,7 @@ export default function MoonPatrolScreen() {
         setError('Could not load game asset');
       }
     } catch (e: any) {
-      console.error('Failed to load Moon Patrol:', e);
+      console.error('Failed to load Lunar Patrol:', e);
       setError(e.message || 'Failed to load game');
     }
   }
@@ -43,7 +53,7 @@ export default function MoonPatrolScreen() {
     return (
       <View style={s.container}>
         <iframe
-          src="/moon-patrol.html"
+          src="/lunar-patrol.html"
           style={{ flex: 1, width: '100%', height: '100%', border: 'none' } as any}
           allowFullScreen
         />
@@ -55,7 +65,7 @@ export default function MoonPatrolScreen() {
     return (
       <View style={[s.container, s.loading]}>
         <Text style={{ fontSize: 48, marginBottom: 16 }}>🚀</Text>
-        <Text style={s.errorText}>Moon Patrol requires a production build.{'\n'}Not available in Expo Go.</Text>
+        <Text style={s.errorText}>Lunar Patrol requires a production build.{'\n'}Not available in Expo Go.</Text>
       </View>
     );
   }

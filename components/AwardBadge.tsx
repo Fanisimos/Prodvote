@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Text, Animated, Easing, StyleSheet, TouchableOpacity } from 'react-native';
+import { playAwardSound } from '../lib/awardSounds';
 
 interface Props {
   emoji: string;
@@ -95,6 +96,8 @@ export default function AwardBadge({ emoji, count, animation, color, size = 28, 
   }, [animation]);
 
   function handleTap() {
+    // Play sound effect + haptic
+    playAwardSound(animation);
     // Bounce animation on tap
     tapBounce.setValue(1);
     Animated.sequence([

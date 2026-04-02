@@ -26,7 +26,7 @@ const PRODUCTIVITY: AppItem[] = [
 ];
 
 const GAMES: AppItem[] = [
-  { id: 'moon-patrol', name: 'Moon Patrol: Dark Frontier', emoji: '🚀', desc: 'Retro arcade shooter — dodge obstacles and blast aliens' },
+  { id: 'lunar-patrol', name: 'Lunar Patrol: Dark Frontier', emoji: '🚀', desc: 'Retro arcade shooter — dodge obstacles and blast aliens' },
   { id: 'snake', name: 'Snake', emoji: '🐍', desc: 'Classic snake game — eat, grow, and don\'t hit yourself!' },
 ];
 

@@ -66,7 +66,7 @@ export async function scheduleDailyRewardReminder() {
   await Notifications.cancelAllScheduledNotificationsAsync();
   await Notifications.scheduleNotificationAsync({
     content: {
-      title: '🎡 Daily reward ready!',
+      title: '🎁 Daily reward ready!',
       body: 'Spin the fortune wheel to claim your free coins.',
     },
     trigger: {

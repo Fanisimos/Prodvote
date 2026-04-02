@@ -1,12 +1,23 @@
+import { useEffect } from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Asset } from 'expo-asset';
+import { useNavigation } from 'expo-router';
 import { useTheme } from '../../lib/theme';
 
 const asset = Asset.fromModule(require('../../assets/snake.html'));
 
 export default function SnakeScreen() {
   const { theme } = useTheme();
+  const navigation = useNavigation();
+
+  // Disable iOS swipe-back gesture so swipe-right controls the snake
+  useEffect(() => {
+    navigation.getParent()?.setOptions({ gestureEnabled: false });
+    return () => {
+      navigation.getParent()?.setOptions({ gestureEnabled: true });
+    };
+  }, [navigation]);
 
   if (Platform.OS === 'web') {
     return (

@@ -7,6 +7,7 @@ import 'react-native-reanimated';
 
 import { AuthProvider, useAuthContext } from '../lib/AuthContext';
 import { ThemeProvider, useTheme } from '../lib/theme';
+import { preloadAwardSounds } from '../lib/awardSounds';
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -26,7 +27,10 @@ export default function RootLayout() {
   }, [error]);
 
   useEffect(() => {
-    if (loaded) SplashScreen.hideAsync();
+    if (loaded) {
+      SplashScreen.hideAsync();
+      preloadAwardSounds();
+    }
   }, [loaded]);
 
   if (!loaded) return null;

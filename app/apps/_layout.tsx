@@ -34,7 +34,7 @@ export default function AppsLayout() {
       <Stack.Screen name="whiteboard" options={{ title: 'Whiteboard' }} />
       <Stack.Screen name="breathe" options={{ title: 'Breathe' }} />
       <Stack.Screen name="hiit" options={{ title: 'HIIT Timer' }} />
-      <Stack.Screen name="moon-patrol" options={{ title: 'Moon Patrol' }} />
+      <Stack.Screen name="lunar-patrol" options={{ title: 'Lunar Patrol' }} />
     </Stack>
   );
 }

@@ -8,6 +8,7 @@ import { useAuthContext } from '../lib/AuthContext';
 import { useTheme, Theme } from '../lib/theme';
 import { AwardType } from '../lib/types';
 import AwardBadge from './AwardBadge';
+import { playAwardSound } from '../lib/awardSounds';
 
 interface Props {
   featureId: string;
@@ -67,6 +68,8 @@ export default function AwardPicker({ featureId, visible, onClose, onAwarded }: 
         await fetchProfile();
         setGiving(false);
         onClose();
+        // Play the award's sound effect + haptic
+        playAwardSound(award.animation);
         onAwarded?.(award.emoji);
         Alert.alert('Award Given!', `You gave ${award.emoji} ${award.name}!`);
       } catch (e: any) {

@@ -1,8 +1,9 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, PanResponder,
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
+import { useNavigation } from 'expo-router';
 import { useTheme, Theme } from '../../lib/theme';
 
 interface Point {
@@ -16,7 +17,7 @@ interface Stroke {
   width: number;
 }
 
-const COLORS = ['#fff', '#7c5cfc', '#ff4d6a', '#34d399', '#ffb347', '#4dc9f6'];
+const COLORS = ['#fff', '#000', '#7c5cfc', '#ff4d6a', '#34d399', '#ffb347', '#4dc9f6'];
 const BRUSH_SIZES = [3, 6, 10];
 
 // Convert points array to a smooth SVG path using quadratic bezier curves
@@ -45,7 +46,16 @@ function pointsToPath(points: Point[]): string {
 
 export default function WhiteboardScreen() {
   const { theme } = useTheme();
+  const navigation = useNavigation();
   const s = styles(theme);
+
+  // Disable iOS swipe-back gesture so swiping works for drawing
+  useEffect(() => {
+    navigation.getParent()?.setOptions({ gestureEnabled: false });
+    return () => {
+      navigation.getParent()?.setOptions({ gestureEnabled: true });
+    };
+  }, [navigation]);
   const [strokes, setStrokes] = useState<Stroke[]>([]);
   const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null);
   const [selectedColor, setSelectedColor] = useState('#fff');
