@@ -191,6 +191,7 @@ export interface Plan {
   description: string | null;
   status: string;
   due_date: string | null;
+  calendar_event_id: string | null;
   created_at: string;
 }
 

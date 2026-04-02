@@ -16,7 +16,10 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.litsai.prodvote",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCalendarsUsageDescription": "Prodvote uses your calendar to sync plan due dates and set reminders so you never miss a deadline.",
+        "NSCalendarsFullAccessUsageDescription": "Prodvote uses your calendar to sync plan due dates and set reminders so you never miss a deadline.",
+        "NSCalendarsWriteOnlyAccessUsageDescription": "Prodvote uses your calendar to add plan due dates and reminders."
       }
     },
     "android": {
@@ -44,7 +47,14 @@
           "icon": "./assets/images/icon.png",
           "color": "#7c5cfc"
         }
-      ]
+      ],
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Prodvote needs access to your calendar to sync plan due dates."
+        }
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true

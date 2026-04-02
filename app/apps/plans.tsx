@@ -1,12 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, FlatList, TextInput, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Alert, Modal, RefreshControl,
+  ActivityIndicator, Alert, Modal, RefreshControl, Platform, Switch,
+  KeyboardAvoidingView, ScrollView,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../lib/AuthContext';
 import { Plan } from '../../lib/types';
 import { useTheme, Theme } from '../../lib/theme';
+import { addPlanToCalendar, removeCalendarEvent } from '../../lib/calendar';
 
 const STATUS_OPTIONS = ['active', 'completed', 'archived'] as const;
 
@@ -19,8 +22,23 @@ export default function PlansScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [dueDate, setDueDate] = useState('');
   const [saving, setSaving] = useState(false);
+  const [syncToCalendar, setSyncToCalendar] = useState(true);
+  const [isAllDay, setIsAllDay] = useState(true);
+  const [dueDate, setDueDate] = useState(new Date());
+  const [startTime, setStartTime] = useState(() => {
+    const d = new Date();
+    d.setHours(9, 0, 0, 0);
+    return d;
+  });
+  const [endTime, setEndTime] = useState(() => {
+    const d = new Date();
+    d.setHours(10, 0, 0, 0);
+    return d;
+  });
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showStartPicker, setShowStartPicker] = useState(false);
+  const [showEndPicker, setShowEndPicker] = useState(false);
 
   const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
     active: { label: 'Active', color: theme.accent },
@@ -45,21 +63,70 @@ export default function PlansScreen() {
     fetchPlans();
   }, [fetchPlans]);
 
+  function resetModal() {
+    setTitle('');
+    setDescription('');
+    setDueDate(new Date());
+    const s = new Date(); s.setHours(9, 0, 0, 0);
+    const e = new Date(); e.setHours(10, 0, 0, 0);
+    setStartTime(s);
+    setEndTime(e);
+    setIsAllDay(true);
+    setSyncToCalendar(true);
+    setShowDatePicker(false);
+    setShowStartPicker(false);
+    setShowEndPicker(false);
+  }
+
+  function buildCalendarDates(): { startDate: Date; endDate: Date } {
+    if (isAllDay) {
+      return { startDate: dueDate, endDate: dueDate };
+    }
+    // Combine dueDate (day) with startTime/endTime (hours)
+    const start = new Date(dueDate);
+    start.setHours(startTime.getHours(), startTime.getMinutes(), 0, 0);
+    const end = new Date(dueDate);
+    end.setHours(endTime.getHours(), endTime.getMinutes(), 0, 0);
+    // If end is before start, push to next day
+    if (end <= start) {
+      end.setDate(end.getDate() + 1);
+    }
+    return { startDate: start, endDate: end };
+  }
+
   async function handleAdd() {
     if (!title.trim() || !session) return;
     setSaving(true);
+
+    let calendarEventId: string | null = null;
+    const dueDateStr = dueDate.toISOString();
+
+    // Sync to device calendar if enabled
+    if (syncToCalendar && Platform.OS !== 'web') {
+      const { startDate, endDate } = buildCalendarDates();
+      calendarEventId = await addPlanToCalendar({
+        title: title.trim(),
+        description: description.trim() || null,
+        allDay: isAllDay,
+        startDate,
+        endDate,
+      });
+    }
+
     const { error } = await supabase.from('plans').insert({
       user_id: session.user.id,
       title: title.trim(),
       description: description.trim() || null,
       status: 'active',
-      due_date: dueDate.trim() || null,
+      due_date: dueDateStr,
+      calendar_event_id: calendarEventId,
     });
     setSaving(false);
     if (!error) {
-      setTitle('');
-      setDescription('');
-      setDueDate('');
+      if (calendarEventId) {
+        Alert.alert('Added to Calendar', 'Your plan has been synced to your device calendar with reminders.');
+      }
+      resetModal();
       setModalVisible(false);
       fetchPlans();
     } else {
@@ -72,18 +139,45 @@ export default function PlansScreen() {
     fetchPlans();
   }
 
-  async function handleDelete(id: string) {
+  async function handleDelete(plan: Plan) {
     Alert.alert('Delete Plan', 'Are you sure?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          await supabase.from('plans').delete().eq('id', id);
-          setPlans((prev) => prev.filter((p) => p.id !== id));
+          if (plan.calendar_event_id && Platform.OS !== 'web') {
+            await removeCalendarEvent(plan.calendar_event_id);
+          }
+          await supabase.from('plans').delete().eq('id', plan.id);
+          setPlans((prev) => prev.filter((p) => p.id !== plan.id));
         },
       },
     ]);
+  }
+
+  async function handleCalendarSync(plan: Plan) {
+    if (!plan.due_date) {
+      Alert.alert('No Due Date', 'Add a due date to sync this plan to your calendar.');
+      return;
+    }
+    if (plan.calendar_event_id) {
+      Alert.alert('Already Synced', 'This plan is already in your calendar.');
+      return;
+    }
+    const date = new Date(plan.due_date);
+    const eventId = await addPlanToCalendar({
+      title: plan.title,
+      description: plan.description,
+      allDay: true,
+      startDate: date,
+      endDate: date,
+    });
+    if (eventId) {
+      await supabase.from('plans').update({ calendar_event_id: eventId }).eq('id', plan.id);
+      Alert.alert('Synced!', 'Plan added to your calendar with reminders.');
+      fetchPlans();
+    }
   }
 
   function formatDueDate(dateStr: string | null) {
@@ -93,6 +187,14 @@ export default function PlansScreen() {
     const isPast = d < now;
     const label = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
     return { label, isPast };
+  }
+
+  function formatDate(d: Date) {
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  function formatTime(d: Date) {
+    return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
   }
 
   const s = styles(theme);
@@ -135,10 +237,15 @@ export default function PlansScreen() {
           const due = formatDueDate(item.due_date);
           const config = STATUS_CONFIG[item.status] || STATUS_CONFIG.active;
           return (
-            <TouchableOpacity style={s.card} onLongPress={() => handleDelete(item.id)}>
+            <TouchableOpacity style={s.card} onLongPress={() => handleDelete(item)}>
               <View style={s.cardHeader}>
                 <Text style={s.cardTitle}>{item.title}</Text>
-                <View style={[s.statusDot, { backgroundColor: config.color }]} />
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  {item.calendar_event_id && (
+                    <Text style={{ fontSize: 14 }}>📅</Text>
+                  )}
+                  <View style={[s.statusDot, { backgroundColor: config.color }]} />
+                </View>
               </View>
               {item.description && (
                 <Text style={s.cardDesc} numberOfLines={2}>{item.description}</Text>
@@ -150,6 +257,14 @@ export default function PlansScreen() {
                   </Text>
                 )}
                 <View style={s.cardActions}>
+                  {item.status === 'active' && item.due_date && !item.calendar_event_id && Platform.OS !== 'web' && (
+                    <TouchableOpacity
+                      style={[s.actionChip, { backgroundColor: '#34d39922' }]}
+                      onPress={() => handleCalendarSync(item)}
+                    >
+                      <Text style={[s.actionChipText, { color: '#34d399' }]}>📅 Sync</Text>
+                    </TouchableOpacity>
+                  )}
                   {item.status === 'active' && (
                     <TouchableOpacity
                       style={s.actionChip}
@@ -188,56 +303,200 @@ export default function PlansScreen() {
 
       {/* New Plan Modal */}
       <Modal visible={modalVisible} animationType="slide" transparent>
-        <View style={s.modalOverlay}>
-          <View style={s.modalContent}>
-            <Text style={s.modalTitle}>New Plan</Text>
-            <TextInput
-              style={s.input}
-              placeholder="Plan title"
-              placeholderTextColor={theme.textMuted}
-              value={title}
-              onChangeText={setTitle}
-              maxLength={100}
-            />
-            <TextInput
-              style={[s.input, s.inputMultiline]}
-              placeholder="Description (optional)"
-              placeholderTextColor={theme.textMuted}
-              value={description}
-              onChangeText={setDescription}
-              multiline
-              numberOfLines={3}
-              maxLength={500}
-            />
-            <TextInput
-              style={s.input}
-              placeholder="Due date (YYYY-MM-DD)"
-              placeholderTextColor={theme.textMuted}
-              value={dueDate}
-              onChangeText={setDueDate}
-              maxLength={10}
-            />
-            <View style={s.modalActions}>
-              <TouchableOpacity
-                style={s.cancelBtn}
-                onPress={() => { setModalVisible(false); setTitle(''); setDescription(''); setDueDate(''); }}
-              >
-                <Text style={s.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[s.saveBtn, (!title.trim() || saving) && { opacity: 0.4 }]}
-                onPress={handleAdd}
-                disabled={!title.trim() || saving}
-              >
-                {saving ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={s.saveBtnText}>Create</Text>
-                )}
-              </TouchableOpacity>
-            </View>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={s.modalOverlay}>
+            <ScrollView
+              style={s.modalScroll}
+              contentContainerStyle={s.modalScrollContent}
+              keyboardShouldPersistTaps="handled"
+              bounces={false}
+            >
+              <Text style={s.modalTitle}>New Plan</Text>
+              <TextInput
+                style={s.input}
+                placeholder="Plan title"
+                placeholderTextColor={theme.textMuted}
+                value={title}
+                onChangeText={setTitle}
+                maxLength={100}
+              />
+              <TextInput
+                style={[s.input, s.inputMultiline]}
+                placeholder="Description (optional)"
+                placeholderTextColor={theme.textMuted}
+                value={description}
+                onChangeText={setDescription}
+                multiline
+                numberOfLines={3}
+                maxLength={500}
+              />
+
+              {/* Date picker */}
+              <Text style={s.sectionLabel}>Due Date</Text>
+              {Platform.OS === 'ios' ? (
+                <View style={s.pickerContainer}>
+                  <DateTimePicker
+                    value={dueDate}
+                    mode="date"
+                    display="compact"
+                    onChange={(_, date) => { if (date) setDueDate(date); }}
+                    minimumDate={new Date()}
+                    accentColor={theme.accent}
+                  />
+                </View>
+              ) : (
+                <>
+                  <TouchableOpacity
+                    style={s.dateButton}
+                    onPress={() => setShowDatePicker(true)}
+                  >
+                    <Text style={s.dateButtonText}>📅  {formatDate(dueDate)}</Text>
+                  </TouchableOpacity>
+                  {showDatePicker && (
+                    <DateTimePicker
+                      value={dueDate}
+                      mode="date"
+                      display="default"
+                      onChange={(_, date) => {
+                        setShowDatePicker(false);
+                        if (date) setDueDate(date);
+                      }}
+                      minimumDate={new Date()}
+                    />
+                  )}
+                </>
+              )}
+
+              {/* All day toggle */}
+              {Platform.OS !== 'web' && (
+                <View style={s.calendarToggle}>
+                  <Text style={s.calendarToggleText}>All Day Event</Text>
+                  <Switch
+                    value={isAllDay}
+                    onValueChange={setIsAllDay}
+                    trackColor={{ false: theme.cardBorder, true: theme.accent + '66' }}
+                    thumbColor={isAllDay ? theme.accent : theme.textMuted}
+                  />
+                </View>
+              )}
+
+              {/* Time pickers (only when not all-day) */}
+              {!isAllDay && (
+                <>
+                  {Platform.OS === 'ios' ? (
+                    <View style={s.timeRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={s.sectionLabel}>Start Time</Text>
+                        <View style={s.pickerContainer}>
+                          <DateTimePicker
+                            value={startTime}
+                            mode="time"
+                            display="compact"
+                            onChange={(_, date) => { if (date) setStartTime(date); }}
+                            accentColor={theme.accent}
+                          />
+                        </View>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={s.sectionLabel}>End Time</Text>
+                        <View style={s.pickerContainer}>
+                          <DateTimePicker
+                            value={endTime}
+                            mode="time"
+                            display="compact"
+                            onChange={(_, date) => { if (date) setEndTime(date); }}
+                            accentColor={theme.accent}
+                          />
+                        </View>
+                      </View>
+                    </View>
+                  ) : (
+                    <>
+                      <View style={s.timeRow}>
+                        <View style={{ flex: 1 }}>
+                          <Text style={s.sectionLabel}>Start Time</Text>
+                          <TouchableOpacity
+                            style={s.dateButton}
+                            onPress={() => setShowStartPicker(true)}
+                          >
+                            <Text style={s.dateButtonText}>{formatTime(startTime)}</Text>
+                          </TouchableOpacity>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={s.sectionLabel}>End Time</Text>
+                          <TouchableOpacity
+                            style={s.dateButton}
+                            onPress={() => setShowEndPicker(true)}
+                          >
+                            <Text style={s.dateButtonText}>{formatTime(endTime)}</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                      {showStartPicker && (
+                        <DateTimePicker
+                          value={startTime}
+                          mode="time"
+                          display="default"
+                          onChange={(_, date) => {
+                            setShowStartPicker(false);
+                            if (date) setStartTime(date);
+                          }}
+                        />
+                      )}
+                      {showEndPicker && (
+                        <DateTimePicker
+                          value={endTime}
+                          mode="time"
+                          display="default"
+                          onChange={(_, date) => {
+                            setShowEndPicker(false);
+                            if (date) setEndTime(date);
+                          }}
+                        />
+                      )}
+                    </>
+                  )}
+                </>
+              )}
+
+              {/* Calendar sync toggle */}
+              {Platform.OS !== 'web' && (
+                <View style={s.calendarToggle}>
+                  <Text style={s.calendarToggleText}>📅 Add to Calendar</Text>
+                  <Switch
+                    value={syncToCalendar}
+                    onValueChange={setSyncToCalendar}
+                    trackColor={{ false: theme.cardBorder, true: theme.accent + '66' }}
+                    thumbColor={syncToCalendar ? theme.accent : theme.textMuted}
+                  />
+                </View>
+              )}
+
+              <View style={s.modalActions}>
+                <TouchableOpacity
+                  style={s.cancelBtn}
+                  onPress={() => { resetModal(); setModalVisible(false); }}
+                >
+                  <Text style={s.cancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[s.saveBtn, (!title.trim() || saving) && { opacity: 0.4 }]}
+                  onPress={handleAdd}
+                  disabled={!title.trim() || saving}
+                >
+                  {saving ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={s.saveBtnText}>Create</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -264,7 +523,7 @@ const styles = (t: Theme) => StyleSheet.create({
   cardDesc: { fontSize: 14, color: t.textMuted, marginTop: 6, lineHeight: 20 },
   cardFooter: { marginTop: 12 },
   dueDate: { fontSize: 12, color: t.textMuted, marginBottom: 8 },
-  cardActions: { flexDirection: 'row', gap: 8 },
+  cardActions: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   actionChip: {
     backgroundColor: t.accent + '22', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 8,
   },
@@ -278,8 +537,11 @@ const styles = (t: Theme) => StyleSheet.create({
   },
   fabText: { fontSize: 28, color: '#fff', fontWeight: '600', marginTop: -2 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
-  modalContent: {
+  modalScroll: {
     backgroundColor: t.card, borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    maxHeight: '90%',
+  },
+  modalScrollContent: {
     padding: 24, paddingBottom: 40,
   },
   modalTitle: { fontSize: 20, fontWeight: '700', color: t.text, marginBottom: 16 },
@@ -288,6 +550,23 @@ const styles = (t: Theme) => StyleSheet.create({
     color: t.text, fontSize: 15, borderWidth: 1, borderColor: t.inputBorder, marginBottom: 12,
   },
   inputMultiline: { minHeight: 80, textAlignVertical: 'top' },
+  sectionLabel: { fontSize: 13, fontWeight: '600', color: t.textMuted, marginBottom: 6, marginTop: 4 },
+  dateButton: {
+    backgroundColor: t.inputBg, borderRadius: 12, padding: 14,
+    borderWidth: 1, borderColor: t.inputBorder, marginBottom: 12,
+  },
+  dateButtonText: { color: t.text, fontSize: 15 },
+  pickerContainer: {
+    backgroundColor: t.inputBg, borderRadius: 12, padding: 8,
+    borderWidth: 1, borderColor: t.inputBorder, marginBottom: 12,
+    alignItems: 'flex-start',
+  },
+  timeRow: { flexDirection: 'row', gap: 12 },
+  calendarToggle: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingVertical: 8, paddingHorizontal: 4, marginBottom: 8,
+  },
+  calendarToggleText: { fontSize: 15, color: t.text, fontWeight: '500' },
   modalActions: { flexDirection: 'row', gap: 12, marginTop: 8 },
   cancelBtn: {
     flex: 1, padding: 14, borderRadius: 12, alignItems: 'center', backgroundColor: t.surface,
