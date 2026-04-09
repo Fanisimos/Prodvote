@@ -159,27 +159,18 @@ export default function ShopScreen() {
       }
       if (result.success) {
         console.log('[shop] purchase success, txnId=', (result as any).transactionId);
-        // Credit coins server-side — idempotent on txn_id to prevent double-credit
-        const { data: rpcData, error: rpcError } = await supabase.rpc('credit_coin_purchase', {
+        const { error: rpcError } = await supabase.rpc('credit_coin_purchase', {
           p_user_id: profile.id,
           p_amount: coinAmount,
           p_product_id: productId,
-          p_txn_id: (result as any).transactionId ?? null,
+          p_txn_id: null,
         });
         if (rpcError) {
           Alert.alert('Error', `Purchase succeeded but credit failed: ${rpcError.message}`);
           return;
         }
-        const credited = Array.isArray(rpcData) ? rpcData[0]?.credited : (rpcData as any)?.credited;
         await fetchProfile();
-        if (credited) {
-          Alert.alert('Coins Added!', `${coinAmount.toLocaleString()} coins have been credited to your account.`);
-        } else {
-          Alert.alert(
-            'Already Credited',
-            'This transaction was already processed. No duplicate coins were added.',
-          );
-        }
+        Alert.alert('Coins Added!', `${coinAmount.toLocaleString()} coins have been credited to your account.`);
       } else if (!result.cancelled) {
         Alert.alert('Error', result.error || 'Purchase failed');
       }
