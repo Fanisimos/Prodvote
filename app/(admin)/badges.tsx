@@ -8,6 +8,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../lib/AuthContext';
 import { Badge } from '../../lib/types';
 import { useTheme, Theme } from '../../lib/theme';
+import { notify, confirmAction } from '../../lib/adminUI';
 
 export default function AdminBadgesScreen() {
   const [badges, setBadges] = useState<Badge[]>([]);
@@ -48,7 +49,7 @@ export default function AdminBadgesScreen() {
 
   const createBadge = async () => {
     if (!formName.trim() || !formEmoji.trim()) {
-      Alert.alert('Error', 'Name and emoji are required.');
+      notify('Error', 'Name and emoji are required.');
       return;
     }
 
@@ -69,37 +70,18 @@ export default function AdminBadgesScreen() {
     setSubmitting(false);
 
     if (error) {
-      Alert.alert('Error', error.message);
+      notify('Error', error.message);
     } else if (data) {
       setBadges(prev => [data, ...prev]);
       resetForm();
     }
   };
 
-  const deleteBadge = (badge: Badge) => {
-    Alert.alert(
-      'Delete Badge',
-      `Are you sure you want to delete "${badge.emoji} ${badge.name}"?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            const { error } = await supabase
-              .from('badges')
-              .delete()
-              .eq('id', badge.id);
-
-            if (error) {
-              Alert.alert('Error', error.message);
-            } else {
-              setBadges(prev => prev.filter(b => b.id !== badge.id));
-            }
-          },
-        },
-      ]
-    );
+  const deleteBadge = async (badge: Badge) => {
+    if (!(await confirmAction('Delete Badge', `Delete "${badge.emoji} ${badge.name}"?`))) return;
+    const { error } = await supabase.from('badges').delete().eq('id', badge.id);
+    if (error) notify('Error', error.message);
+    else setBadges(prev => prev.filter(b => b.id !== badge.id));
   };
 
   const s = makeStyles(theme);

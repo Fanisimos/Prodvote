@@ -7,8 +7,10 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
+  isGuest: boolean;
   signUp: (email: string, password: string, username: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signInAsGuest: () => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   fetchProfile: (userId?: string) => Promise<void>;
 }

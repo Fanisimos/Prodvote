@@ -11,9 +11,13 @@ import AwardPicker from '../../components/AwardPicker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../lib/AuthContext';
+import { promptSignUp } from '../../lib/guestGate';
 import { notifyVoteMilestone } from '../../lib/notifications';
 import { useTheme, Theme } from '../../lib/theme';
 import { Feature, Comment, FeatureAwardCount } from '../../lib/types';
+import { useFeatureFlags } from '../../lib/useFeatureFlags';
+import { useReport } from '../../components/ReportButton';
+import { getBlockedUserIds } from '../../lib/blockUser';
 
 export default function FeatureDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -26,21 +30,27 @@ export default function FeatureDetailScreen() {
   const [sending, setSending] = useState(false);
   const [awards, setAwards] = useState<FeatureAwardCount[]>([]);
   const [awardPickerOpen, setAwardPickerOpen] = useState(false);
-  const { session, profile } = useAuthContext();
+  const [boosting, setBoosting] = useState(false);
+  const { session, profile, isGuest } = useAuthContext();
   const { theme } = useTheme();
+  const flags = useFeatureFlags();
+  const { report } = useReport();
 
   useEffect(() => { fetchAll(); }, [id]);
 
   async function fetchAll() {
+    const blockedIds = await getBlockedUserIds();
     const [featureRes, commentsRes] = await Promise.all([
       supabase.from('features_with_details').select('*').eq('id', id).single(),
       supabase.from('comments').select('*, profiles(username, avatar_url, tier)')
         .eq('feature_id', id).order('created_at', { ascending: true }),
     ]);
     setFeature(featureRes.data);
-    const mapped = (commentsRes.data || []).map((c: any) => ({
-      ...c, username: c.profiles?.username, avatar_url: c.profiles?.avatar_url, tier: c.profiles?.tier,
-    }));
+    const mapped = (commentsRes.data || [])
+      .filter((c: any) => !blockedIds.includes(c.user_id))
+      .map((c: any) => ({
+        ...c, username: c.profiles?.username, avatar_url: c.profiles?.avatar_url, tier: c.profiles?.tier,
+      }));
     setComments(mapped);
     // Fetch awards
     const { data: awardData } = await supabase
@@ -58,6 +68,7 @@ export default function FeatureDetailScreen() {
   }
 
   async function handleVote() {
+    if (isGuest) { promptSignUp('vote'); return; }
     if (!session || !profile || !feature) return;
     if (hasVoted) {
       await supabase.from('votes').delete().eq('user_id', session.user.id).eq('feature_id', id);
@@ -82,6 +93,7 @@ export default function FeatureDetailScreen() {
   }
 
   async function handleComment() {
+    if (isGuest) { promptSignUp('comment'); return; }
     if (!newComment.trim() || !session) return;
     setSending(true);
     const { error } = await supabase.from('comments').insert({
@@ -89,6 +101,40 @@ export default function FeatureDetailScreen() {
     });
     setSending(false);
     if (!error) { setNewComment(''); fetchAll(); }
+  }
+
+  async function handleBoost() {
+    if (!session || !profile || !feature || boosting) return;
+    const cost = 50;
+    if ((profile.coins ?? 0) < cost) {
+      Alert.alert('Not Enough Coins', `Boosting costs ${cost} coins. Visit the shop to get more!`);
+      return;
+    }
+    Alert.alert(
+      'Boost This Idea',
+      `Spend ${cost} coins to boost "${feature.title}"?\n\nBoosted ideas get more visibility in the feed.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: `Boost (${cost} coins)`,
+          onPress: async () => {
+            setBoosting(true);
+            const { data, error } = await supabase.rpc('boost_feature', {
+              p_user_id: session.user.id,
+              p_feature_id: feature.id,
+              p_cost: cost,
+            });
+            setBoosting(false);
+            if (data === true) {
+              Alert.alert('Boosted!', 'This idea will get more visibility.');
+              fetchAll();
+            } else {
+              Alert.alert('Failed', error?.message || 'Could not boost. Check your coins.');
+            }
+          },
+        },
+      ]
+    );
   }
 
   const s = styles(theme);
@@ -117,11 +163,19 @@ export default function FeatureDetailScreen() {
           </View>
           <Text style={s.title}>{feature.title}</Text>
           <Text style={s.description}>{feature.description}</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <TouchableOpacity onPress={() => router.push(`/user/${feature.author_username}` as any)}>
-              <Text style={[s.authorText, { color: theme.accent }]}>@{feature.author_username || 'anon'}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <TouchableOpacity onPress={() => router.push(`/user/${feature.author_username}` as any)}>
+                <Text style={[s.authorText, { color: theme.accent }]}>@{feature.author_username || 'anon'}</Text>
+              </TouchableOpacity>
+              <Text style={s.authorText}>· {timeAgo(feature.created_at)}</Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => report({ contentType: 'feature', contentId: feature.id, authorId: feature.user_id, authorUsername: feature.author_username })}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Text style={s.reportBtn}>···</Text>
             </TouchableOpacity>
-            <Text style={s.authorText}>· {timeAgo(feature.created_at)}</Text>
           </View>
         </View>
 
@@ -143,7 +197,7 @@ export default function FeatureDetailScreen() {
           </View>
         )}
 
-        {/* Vote + Give Award row */}
+        {/* Vote + Boost + Give Award row */}
         <View style={s.actionRow}>
           <TouchableOpacity style={[s.voteButton, hasVoted && s.voteButtonActive]} onPress={handleVote}>
             <Text style={[s.voteArrow, hasVoted && s.voteArrowActive]}>▲</Text>
@@ -151,6 +205,12 @@ export default function FeatureDetailScreen() {
               {hasVoted ? 'Voted' : 'Upvote'} · {feature.vote_count}
             </Text>
           </TouchableOpacity>
+          {flags.boost_idea !== false && (
+            <TouchableOpacity style={s.boostBtn} onPress={handleBoost} disabled={boosting}>
+              <Text style={{ fontSize: 16 }}>{feature.is_boosted ? '🔥' : '🚀'}</Text>
+              <Text style={s.boostBtnText}>{feature.is_boosted ? 'Boosted' : 'Boost'}</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity style={s.giveAwardBtn} onPress={() => setAwardPickerOpen(true)}>
             <Text style={{ fontSize: 18 }}>🏆</Text>
             <Text style={s.giveAwardText}>Award</Text>
@@ -176,7 +236,7 @@ export default function FeatureDetailScreen() {
           {comments.map(comment => (
             <View key={comment.id} style={[s.comment, comment.is_dev_reply && s.commentDev]}>
               <View style={s.commentHeader}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
                   <UserAvatar
                     username={comment.username || 'anon'}
                     avatarUrl={(comment as any).avatar_url}
@@ -188,7 +248,15 @@ export default function FeatureDetailScreen() {
                     </Text>
                   </TouchableOpacity>
                 </View>
-                <Text style={s.commentTime}>{timeAgo(comment.created_at)}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Text style={s.commentTime}>{timeAgo(comment.created_at)}</Text>
+                  <TouchableOpacity
+                    onPress={() => report({ contentType: 'comment', contentId: comment.id, authorId: comment.user_id, authorUsername: comment.username })}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <Text style={s.reportBtn}>···</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
               <Text style={s.commentBody}>{comment.body}</Text>
             </View>
@@ -255,6 +323,12 @@ const styles = (t: Theme) => StyleSheet.create({
     gap: 8, backgroundColor: t.card, borderRadius: 14, padding: 14,
     borderWidth: 1, borderColor: t.cardBorder,
   },
+  boostBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 4, backgroundColor: t.card, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 14,
+    borderWidth: 1, borderColor: t.accent + '44',
+  },
+  boostBtnText: { fontSize: 13, fontWeight: '700', color: t.accent },
   giveAwardBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 6, backgroundColor: t.card, borderRadius: 14, paddingHorizontal: 18, paddingVertical: 14,
@@ -296,4 +370,5 @@ const styles = (t: Theme) => StyleSheet.create({
   },
   sendBtnDisabled: { opacity: 0.4 },
   sendText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  reportBtn: { fontSize: 18, color: t.textMuted, fontWeight: '700', letterSpacing: 2, paddingHorizontal: 4 },
 });

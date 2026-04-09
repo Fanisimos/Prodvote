@@ -45,9 +45,16 @@ export default function AdminLayout() {
       <Stack.Screen name="dashboard" options={{ title: 'Admin Dashboard' }} />
       <Stack.Screen name="users" options={{ title: 'Manage Users' }} />
       <Stack.Screen name="features" options={{ title: 'Manage Features' }} />
+      <Stack.Screen name="battles" options={{ title: 'Idea Battles' }} />
+      <Stack.Screen name="boosts" options={{ title: 'Boosts' }} />
+      <Stack.Screen name="contributors" options={{ title: 'Contributors' }} />
+      <Stack.Screen name="app-metadata" options={{ title: 'App Metadata' }} />
+      <Stack.Screen name="flags" options={{ title: 'Feature Flags' }} />
+      <Stack.Screen name="reports" options={{ title: 'Content Reports' }} />
       <Stack.Screen name="badges" options={{ title: 'Manage Badges' }} />
       <Stack.Screen name="channels" options={{ title: 'Manage Channels' }} />
       <Stack.Screen name="subscriptions" options={{ title: 'Subscriptions' }} />
+      <Stack.Screen name="notifications" options={{ title: 'Admin Notifications' }} />
     </Stack>
   );
 }

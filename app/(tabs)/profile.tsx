@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView, Share, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView, Share, Platform, Linking } from 'react-native';
 import Watermark from '../../components/Watermark';
 import UserAvatar from '../../components/UserAvatar';
 import { router } from 'expo-router';
@@ -7,7 +7,10 @@ import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../lib/AuthContext';
 import { useTheme, Theme, tierColor, tierEmoji } from '../../lib/theme';
 import { Feature, Badge, AvatarFrame } from '../../lib/types';
+import ContributorBadgeView from '../../components/ContributorBadge';
+import AdminBell from '../../components/AdminBell';
 import { registerForPushNotifications, scheduleDailyRewardReminder } from '../../lib/notifications';
+import { confirmDeleteAccount } from '../../lib/deleteAccount';
 import * as StoreReview from 'expo-store-review';
 
 async function maybePromptRating(userId: string) {
@@ -24,7 +27,7 @@ async function maybePromptRating(userId: string) {
 }
 
 export default function ProfileScreen() {
-  const { profile, signOut, fetchProfile } = useAuthContext();
+  const { profile, signOut, fetchProfile, isGuest } = useAuthContext();
   const { theme, isDark, toggleTheme } = useTheme();
   const [submissions, setSubmissions] = useState<Feature[]>([]);
   const [ownedBadges, setOwnedBadges] = useState<(Badge & { owned: boolean })[]>([]);
@@ -34,7 +37,7 @@ export default function ProfileScreen() {
     if (!profile) return;
     // Register push notifications
     registerForPushNotifications(profile.id);
-    scheduleDailyRewardReminder();
+    scheduleDailyRewardReminder(profile.last_daily_reward_at);
     // Fetch user submissions
     supabase.from('features_with_details').select('*')
       .eq('user_id', profile.id).order('created_at', { ascending: false }).limit(5)
@@ -140,10 +143,7 @@ export default function ProfileScreen() {
   }
 
   function handleSignOut() {
-    Alert.alert('Sign Out', 'Are you sure?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign Out', style: 'destructive', onPress: signOut },
-    ]);
+    signOut();
   }
 
   if (!profile) return null;
@@ -151,9 +151,40 @@ export default function ProfileScreen() {
   const s = styles(theme);
   const tColor = tierColor(profile.tier, theme);
 
+  if (isGuest) {
+    return (
+      <View style={s.container}>
+        <Watermark />
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 }}>
+          <Text style={{ fontSize: 64, marginBottom: 16 }}>👤</Text>
+          <Text style={{ fontSize: 24, fontWeight: '800', color: theme.text, marginBottom: 8, textAlign: 'center' }}>
+            You're browsing as a guest
+          </Text>
+          <Text style={{ fontSize: 15, color: theme.textMuted, textAlign: 'center', marginBottom: 24, lineHeight: 22 }}>
+            Sign up to vote, submit ideas, use AI, earn badges, and save your progress.
+          </Text>
+          <TouchableOpacity
+            style={{ backgroundColor: theme.accent, paddingHorizontal: 32, paddingVertical: 14, borderRadius: 14, marginBottom: 12 }}
+            onPress={async () => { await signOut(); router.replace('/(auth)/register'); }}
+          >
+            <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>Create Account</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={async () => { await signOut(); router.replace('/(auth)/login'); }}>
+            <Text style={{ color: theme.accent, fontSize: 14, fontWeight: '600' }}>I already have an account</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={s.container}>
       <Watermark />
+      {profile.is_admin && (
+        <View style={{ position: 'absolute', top: 50, right: 16, zIndex: 10 }}>
+          <AdminBell />
+        </View>
+      )}
     <ScrollView style={{ flex: 1 }} contentContainerStyle={s.content}>
 
       {/* Avatar Section */}
@@ -194,6 +225,30 @@ export default function ProfileScreen() {
           <Text style={s.statLabel}>Submitted</Text>
         </View>
       </View>
+
+      {/* Contributor Stats */}
+      {(profile.ideas_submitted || profile.total_votes_cast || profile.contributor_badge) ? (
+        <View style={s.contributorCard}>
+          <View style={s.contributorHeader}>
+            <Text style={s.contributorTitle}>Contributor Stats</Text>
+            <ContributorBadgeView badge={profile.contributor_badge} size="normal" />
+          </View>
+          <View style={s.contributorRow}>
+            <View style={s.contributorStat}>
+              <Text style={s.contributorValue}>{profile.ideas_submitted ?? 0}</Text>
+              <Text style={s.contributorLabel}>Ideas</Text>
+            </View>
+            <View style={s.contributorStat}>
+              <Text style={s.contributorValue}>{profile.total_votes_cast ?? 0}</Text>
+              <Text style={s.contributorLabel}>Votes Cast</Text>
+            </View>
+            <View style={s.contributorStat}>
+              <Text style={s.contributorValue}>{profile.winning_ideas ?? 0}</Text>
+              <Text style={s.contributorLabel}>Shipped</Text>
+            </View>
+          </View>
+        </View>
+      ) : null}
 
       {/* Daily Reward */}
       <TouchableOpacity style={s.dailyReward} onPress={claimDailyReward}>
@@ -373,9 +428,42 @@ export default function ProfileScreen() {
         <Text style={s.themeText}>{isDark ? 'Light Mode' : 'Dark Mode'}</Text>
       </TouchableOpacity>
 
+      {/* About */}
+      <View style={s.aboutCard}>
+        <Text style={s.aboutTitle}>About Prodvote</Text>
+        <Text style={s.aboutDesc}>
+          Prodvote is a community-driven platform where your ideas shape the product. Submit features, vote on what matters, and watch your suggestions come to life.
+        </Text>
+        <View style={s.aboutLinks}>
+          <TouchableOpacity onPress={() => Linking.openURL('https://litsaitechnologies.com/legal/prodvote/terms')}>
+            <Text style={s.aboutLink}>Terms of Service</Text>
+          </TouchableOpacity>
+          <Text style={s.aboutDot}>·</Text>
+          <TouchableOpacity onPress={() => Linking.openURL('https://litsaitechnologies.com/legal/prodvote/privacy')}>
+            <Text style={s.aboutLink}>Privacy Policy</Text>
+          </TouchableOpacity>
+        </View>
+        <Text style={s.aboutMadeBy}>Made by LitsAI Technologies</Text>
+        <Text style={s.aboutVersion}>Version 1.0.0</Text>
+      </View>
+
+      {/* Blocked Users */}
+      <TouchableOpacity
+        style={s.themeToggle}
+        onPress={() => router.push('/apps/blocked-users' as any)}
+      >
+        <Text style={{ fontSize: 20 }}>🚫</Text>
+        <Text style={s.themeText}>Blocked Users</Text>
+      </TouchableOpacity>
+
       {/* Sign Out */}
       <TouchableOpacity style={s.signOutBtn} onPress={handleSignOut}>
         <Text style={s.signOutText}>Sign Out</Text>
+      </TouchableOpacity>
+
+      {/* Delete Account (Apple 5.1.1(v)) */}
+      <TouchableOpacity style={s.deleteAccountBtn} onPress={confirmDeleteAccount}>
+        <Text style={s.deleteAccountText}>Delete Account</Text>
       </TouchableOpacity>
     </ScrollView>
     </View>
@@ -406,6 +494,18 @@ const styles = (t: Theme) => StyleSheet.create({
   stat: { flex: 1, alignItems: 'center' },
   statValue: { fontSize: 20, fontWeight: '800', color: t.text },
   statLabel: { fontSize: 12, color: t.textMuted, marginTop: 4 },
+  contributorCard: {
+    backgroundColor: t.card, borderRadius: 16, padding: 18,
+    marginBottom: 16, borderWidth: 1, borderColor: t.cardBorder,
+  },
+  contributorHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12,
+  },
+  contributorTitle: { fontSize: 14, fontWeight: '800', color: t.text },
+  contributorRow: { flexDirection: 'row' },
+  contributorStat: { flex: 1, alignItems: 'center' },
+  contributorValue: { fontSize: 20, fontWeight: '800', color: t.accent },
+  contributorLabel: { fontSize: 12, color: t.textMuted, marginTop: 2 },
   dailyReward: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: t.card,
     borderRadius: 14, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: t.cardBorder,
@@ -474,11 +574,27 @@ const styles = (t: Theme) => StyleSheet.create({
     marginTop: 20, borderWidth: 1, borderColor: t.cardBorder,
   },
   themeText: { fontSize: 16, fontWeight: '600', color: t.text },
+  aboutCard: {
+    backgroundColor: t.card, borderRadius: 14, padding: 18,
+    marginTop: 16, borderWidth: 1, borderColor: t.cardBorder,
+    alignItems: 'center',
+  },
+  aboutTitle: { fontSize: 16, fontWeight: '700', color: t.text, marginBottom: 8 },
+  aboutDesc: { fontSize: 13, color: t.textMuted, lineHeight: 20, textAlign: 'center', marginBottom: 14 },
+  aboutLinks: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+  aboutLink: { fontSize: 13, color: t.accent, fontWeight: '600' },
+  aboutDot: { fontSize: 13, color: t.textMuted },
+  aboutMadeBy: { fontSize: 12, color: t.textMuted, fontWeight: '600', marginBottom: 4 },
+  aboutVersion: { fontSize: 11, color: t.textMuted + '88' },
   signOutBtn: {
     borderRadius: 14, padding: 16, alignItems: 'center',
     marginTop: 10, borderWidth: 1, borderColor: t.danger + '44',
   },
   signOutText: { color: t.danger, fontSize: 16, fontWeight: '700' },
+  deleteAccountBtn: {
+    alignItems: 'center', paddingVertical: 14, marginTop: 8,
+  },
+  deleteAccountText: { color: t.textMuted, fontSize: 13, fontWeight: '600', textDecorationLine: 'underline' },
   inviteCard: {
     backgroundColor: t.card, borderRadius: 16, padding: 18,
     marginBottom: 20, borderWidth: 1, borderColor: t.accent + '44',

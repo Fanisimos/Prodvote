@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ScrollView, Alert, ActivityIndicator,
+  ScrollView, Alert, ActivityIndicator, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import Watermark from '../../components/Watermark';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../lib/AuthContext';
 import { useTheme, Theme } from '../../lib/theme';
+import { useFeatureFlags } from '../../lib/useFeatureFlags';
 import { Category } from '../../lib/types';
+import { improveIdea } from '../../lib/ai';
+import { promptSignUp } from '../../lib/guestGate';
 
 export default function SubmitScreen() {
   const [title, setTitle] = useState('');
@@ -16,8 +19,10 @@ export default function SubmitScreen() {
   const [selectedCategory, setSelectedCategory] = useState<number>(1);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const { session } = useAuthContext();
+  const [improving, setImproving] = useState(false);
+  const { session, isGuest } = useAuthContext();
   const { theme } = useTheme();
+  const flags = useFeatureFlags();
 
   useEffect(() => {
     supabase.from('categories').select('*').then(({ data }) => {
@@ -25,7 +30,42 @@ export default function SubmitScreen() {
     });
   }, []);
 
+  async function handleAIImprove() {
+    if (isGuest) { promptSignUp('use AI'); return; }
+    if (!title.trim() && !description.trim()) {
+      Alert.alert('Nothing to improve', 'Write a title and description first.');
+      return;
+    }
+    setImproving(true);
+    try {
+      const result = await improveIdea(title.trim(), description.trim());
+      console.log('[improveIdea] result:', result);
+
+      if (result.error === 'rate_limited') {
+        Alert.alert(
+          'AI is busy',
+          'We\'re currently experiencing high demand. Try again later or upgrade to Pro for guaranteed access.',
+        );
+        setImproving(false);
+        return;
+      }
+      if (result.error === 'monthly_limit') {
+        Alert.alert('Limit reached', 'You\'ve used all your AI credits this month. Resets on the 1st.');
+        setImproving(false);
+        return;
+      }
+
+      if (result.title) setTitle(result.title);
+      if (result.description) setDescription(result.description);
+    } catch (e: any) {
+      console.error('[improveIdea] error:', e);
+      Alert.alert('AI Error', e?.message || 'Could not reach AI service. Check your connection.');
+    }
+    setImproving(false);
+  }
+
   async function handleSubmit() {
+    if (isGuest) { promptSignUp('submit'); return; }
     if (!title.trim() || !description.trim()) {
       Alert.alert('Error', 'Please fill in title and description');
       return;
@@ -59,10 +99,17 @@ export default function SubmitScreen() {
   const s = styles(theme);
 
   return (
-    <View style={s.container}>
+    <KeyboardAvoidingView
+      style={s.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+    >
       <Watermark />
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={s.content}>
-
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={s.content}
+        keyboardShouldPersistTaps="handled"
+      >
       {submitted && (
         <View style={s.successBanner}>
           <Text style={s.successText}>Feature submitted successfully!</Text>
@@ -96,6 +143,19 @@ export default function SubmitScreen() {
       />
       <Text style={s.charCount}>{description.length}/1000</Text>
 
+      {flags.ai_improve !== false && (title.trim() || description.trim()) && (
+        <TouchableOpacity style={s.aiBtn} onPress={handleAIImprove} disabled={improving}>
+          {improving ? (
+            <ActivityIndicator size="small" color={theme.accent} />
+          ) : (
+            <>
+              <Text style={{ fontSize: 16 }}>✨</Text>
+              <Text style={s.aiBtnText}>Improve with AI</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      )}
+
       <Text style={s.label}>Category</Text>
       <View style={s.categoryRow}>
         {categories.map(cat => (
@@ -122,7 +182,7 @@ export default function SubmitScreen() {
         )}
       </TouchableOpacity>
     </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -143,6 +203,12 @@ const styles = (t: Theme) => StyleSheet.create({
   },
   textArea: { height: 140 },
   charCount: { fontSize: 12, color: t.textMuted, textAlign: 'right', marginTop: 4 },
+  aiBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    backgroundColor: t.accentLight, borderRadius: 10, paddingVertical: 10,
+    borderWidth: 1, borderColor: t.accent + '44', marginTop: 8,
+  },
+  aiBtnText: { fontSize: 14, fontWeight: '600', color: t.accent },
   categoryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   categoryChip: {
     paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10,

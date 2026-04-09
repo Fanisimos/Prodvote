@@ -22,7 +22,9 @@
       },
       "env": {
         "EAS_SKIP_AUTO_FINGERPRINT": "1",
-        "EXPO_NO_FINGERPRINT": "1"
+        "EXPO_NO_FINGERPRINT": "1",
+        "RCT_BUILD_HERMES_FROM_SOURCE": "1",
+        "BUILD_FROM_SOURCE": "1"
       }
     }
   },

@@ -3,20 +3,20 @@ import { Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { Profile } from '../lib/types';
 import { Session } from '@supabase/supabase-js';
-import { initRevenueCat } from '../lib/revenue';
+import { initRevenueCat, logOutRevenueCat } from '../lib/revenue';
 
 export function useAuth() {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const revenueCatInitialized = useRef(false);
+  const lastRcUserId = useRef<string | null>(null);
 
   const initRC = useCallback(async (userId: string) => {
-    if (revenueCatInitialized.current) return;
     if (Platform.OS === 'web') return;
+    if (lastRcUserId.current === userId) return;
     try {
       await initRevenueCat(userId);
-      revenueCatInitialized.current = true;
+      lastRcUserId.current = userId;
     } catch (e) {
       console.warn('RevenueCat init failed:', e);
     }
@@ -77,11 +77,21 @@ export function useAuth() {
     return { error };
   }
 
+  async function signInAsGuest() {
+    const { error } = await supabase.auth.signInAnonymously();
+    return { error };
+  }
+
   async function signOut() {
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+    if (error) console.error('[signOut] error:', error);
+    await logOutRevenueCat();
+    lastRcUserId.current = null;
     setProfile(null);
     setSession(null);
   }
 
-  return { session, profile, loading, signUp, signIn, signOut, fetchProfile };
+  const isGuest = !!session?.user?.is_anonymous;
+
+  return { session, profile, loading, isGuest, signUp, signIn, signInAsGuest, signOut, fetchProfile };
 }

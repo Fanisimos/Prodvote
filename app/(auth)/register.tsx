@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, Alert, ActivityIndicator,
+  KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Linking,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useAuthContext } from '../../lib/AuthContext';
@@ -15,28 +15,41 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('');
   const [referralCode, setReferralCode] = useState(ref || '');
   const [loading, setLoading] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const { signUp } = useAuthContext();
   const router = useRouter();
   const { theme } = useTheme();
 
+  function notify(title: string, msg: string) {
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined') window.alert(`${title}\n\n${msg}`);
+    } else {
+      Alert.alert(title, msg);
+    }
+  }
+
   async function handleRegister() {
+    if (!agreedToTerms) {
+      notify('Terms Required', 'Please agree to the Terms of Service and Privacy Policy to continue.');
+      return;
+    }
     if (!username.trim() || !email.trim() || !password.trim()) {
-      Alert.alert('Error', 'Please fill in all fields');
+      notify('Error', 'Please fill in all fields');
       return;
     }
     if (username.trim().length < 3) {
-      Alert.alert('Error', 'Username must be at least 3 characters');
+      notify('Error', 'Username must be at least 3 characters');
       return;
     }
     if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
+      notify('Error', 'Password must be at least 6 characters');
       return;
     }
     setLoading(true);
     const { error } = await signUp(email.trim(), password, username.trim());
     if (error) {
       setLoading(false);
-      Alert.alert('Registration Failed', error.message);
+      notify('Registration Failed', error.message);
       return;
     }
 
@@ -52,9 +65,8 @@ export default function RegisterScreen() {
     }
 
     setLoading(false);
-    Alert.alert('Success', 'Account created! You can now sign in.', [
-      { text: 'OK', onPress: () => router.back() },
-    ]);
+    notify('Success', 'Account created! You can now sign in.');
+    router.back();
   }
 
   const s = styles(theme);
@@ -103,7 +115,33 @@ export default function RegisterScreen() {
             onChangeText={setReferralCode}
             maxLength={10}
           />
-          <TouchableOpacity style={s.button} onPress={handleRegister} disabled={loading}>
+          <TouchableOpacity
+            style={s.termsRow}
+            onPress={() => setAgreedToTerms(v => !v)}
+            activeOpacity={0.7}
+          >
+            <View style={[s.checkbox, agreedToTerms && { backgroundColor: theme.accent, borderColor: theme.accent }]}>
+              {agreedToTerms && <Text style={s.checkmark}>✓</Text>}
+            </View>
+            <Text style={s.termsText}>
+              I agree to the{' '}
+              <Text
+                style={s.termsLink}
+                onPress={(e) => { e.stopPropagation?.(); Linking.openURL('https://litsaitechnologies.com/legal/prodvote/terms'); }}
+              >
+                Terms
+              </Text>
+              {' '}&{' '}
+              <Text
+                style={s.termsLink}
+                onPress={(e) => { e.stopPropagation?.(); Linking.openURL('https://litsaitechnologies.com/legal/prodvote/privacy'); }}
+              >
+                Privacy Policy
+              </Text>
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={[s.button, !agreedToTerms && { opacity: 0.5 }]} onPress={handleRegister} disabled={loading || !agreedToTerms}>
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
@@ -141,4 +179,14 @@ const styles = (t: Theme) => StyleSheet.create({
   linkText: { color: t.textMuted, textAlign: 'center', marginTop: 16, fontSize: 15 },
   linkBold: { color: t.accent, fontWeight: '600' },
   referralInput: { borderStyle: 'dashed' },
+  termsRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4,
+  },
+  checkbox: {
+    width: 22, height: 22, borderRadius: 6, borderWidth: 2,
+    borderColor: t.inputBorder, alignItems: 'center', justifyContent: 'center',
+  },
+  checkmark: { color: '#fff', fontSize: 13, fontWeight: '800' },
+  termsText: { fontSize: 13, color: t.textMuted, flex: 1 },
+  termsLink: { color: t.accent, fontWeight: '600', textDecorationLine: 'underline' },
 });

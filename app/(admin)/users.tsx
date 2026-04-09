@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  RefreshControl, ActivityIndicator, Alert,
+  RefreshControl, ActivityIndicator, Alert, Platform,
 } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../lib/AuthContext';
@@ -39,6 +39,19 @@ export default function AdminUsersScreen() {
 
   const toggleBan = async (user: Profile) => {
     const action = user.is_banned ? 'unban' : 'ban';
+    const doIt = async () => {
+      const { error } = await supabase.from('profiles').update({ is_banned: !user.is_banned }).eq('id', user.id);
+      if (error) {
+        if (Platform.OS === 'web') window.alert(`Error: ${error.message}`);
+        else Alert.alert('Error', error.message);
+        return;
+      }
+      setUsers(prev => prev.map(u => u.id === user.id ? { ...u, is_banned: !u.is_banned } : u));
+    };
+    if (Platform.OS === 'web') {
+      if (window.confirm(`${action.charAt(0).toUpperCase() + action.slice(1)} @${user.username}?`)) doIt();
+      return;
+    }
     Alert.alert(
       `${action.charAt(0).toUpperCase() + action.slice(1)} User`,
       `Are you sure you want to ${action} @${user.username}?`,
@@ -47,46 +60,41 @@ export default function AdminUsersScreen() {
         {
           text: action.charAt(0).toUpperCase() + action.slice(1),
           style: user.is_banned ? 'default' : 'destructive',
-          onPress: async () => {
-            const { error } = await supabase
-              .from('profiles')
-              .update({ is_banned: !user.is_banned })
-              .eq('id', user.id);
-
-            if (error) {
-              Alert.alert('Error', error.message);
-            } else {
-              setUsers(prev =>
-                prev.map(u => u.id === user.id ? { ...u, is_banned: !u.is_banned } : u)
-              );
-            }
-          },
+          onPress: doIt,
         },
       ]
     );
   };
 
+  const applyTier = async (user: Profile, tier: Tier) => {
+    const { error } = await supabase.from('profiles').update({ tier }).eq('id', user.id);
+    if (error) {
+      if (Platform.OS === 'web') window.alert(`Error: ${error.message}`);
+      else Alert.alert('Error', error.message);
+      return;
+    }
+    setUsers(prev => prev.map(u => u.id === user.id ? { ...u, tier } : u));
+  };
+
   const changeTier = (user: Profile) => {
+    const options = TIERS.filter(t => t !== user.tier);
+    if (Platform.OS === 'web') {
+      const choice = window.prompt(
+        `Change tier for @${user.username}\nCurrent: ${user.tier}\n\n${options.map((t, i) => `${i + 1}. ${t}`).join('\n')}\n\nEnter a number (1-${options.length}):`
+      );
+      if (!choice) return;
+      const idx = parseInt(choice, 10) - 1;
+      const picked = options[idx];
+      if (picked) applyTier(user, picked);
+      return;
+    }
     Alert.alert(
       'Change Tier',
       `Current tier: ${user.tier}\nSelect new tier for @${user.username}:`,
       [
-        ...TIERS.filter(t => t !== user.tier).map(tier => ({
+        ...options.map(tier => ({
           text: tier.charAt(0).toUpperCase() + tier.slice(1),
-          onPress: async () => {
-            const { error } = await supabase
-              .from('profiles')
-              .update({ tier })
-              .eq('id', user.id);
-
-            if (error) {
-              Alert.alert('Error', error.message);
-            } else {
-              setUsers(prev =>
-                prev.map(u => u.id === user.id ? { ...u, tier } : u)
-              );
-            }
-          },
+          onPress: () => applyTier(user, tier),
         })),
         { text: 'Cancel', style: 'cancel' },
       ]

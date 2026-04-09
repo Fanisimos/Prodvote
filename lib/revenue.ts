@@ -10,47 +10,72 @@ let configurePromise: Promise<void> | null = null;
 
 export async function initRevenueCat(userId?: string) {
   if (Platform.OS === 'web') return;
-  if (isConfigured) return;
 
   const apiKey = Platform.OS === 'ios' ? REVENUECAT_API_KEY_IOS : REVENUECAT_API_KEY_ANDROID;
   if (!apiKey) return;
 
   try {
-    Purchases.configure({ apiKey });
-    isConfigured = true;
+    if (!isConfigured) {
+      Purchases.configure({ apiKey });
+      isConfigured = true;
+    }
     if (userId) {
-      await Purchases.logIn(userId);
+      const { customerInfo } = await Purchases.logIn(userId);
+      console.log('[revenue] logIn →', userId, 'rcAppUserId=', await Purchases.getAppUserID());
+      await syncTierFromCustomerInfo(customerInfo);
     }
   } catch (e) {
     console.error('RevenueCat configure error:', e);
   }
 }
 
+export async function logOutRevenueCat() {
+  if (Platform.OS === 'web' || !isConfigured) return;
+  try {
+    await Purchases.logOut();
+  } catch (e) {
+    console.warn('RevenueCat logOut error:', e);
+  }
+}
+
 async function ensureConfigured(): Promise<boolean> {
   if (Platform.OS === 'web') return false;
-  if (isConfigured) return true;
 
-  // If someone else is already configuring, wait for them
-  if (configurePromise) {
-    await configurePromise;
-    return isConfigured;
-  }
-
-  // Auto-configure without userId — RevenueCat works anonymously too
   const apiKey = Platform.OS === 'ios' ? REVENUECAT_API_KEY_IOS : REVENUECAT_API_KEY_ANDROID;
   if (!apiKey) return false;
 
-  configurePromise = (async () => {
-    try {
-      Purchases.configure({ apiKey });
-      isConfigured = true;
-    } catch (e) {
-      console.error('RevenueCat auto-configure error:', e);
+  if (!isConfigured) {
+    if (configurePromise) {
+      await configurePromise;
+    } else {
+      configurePromise = (async () => {
+        try {
+          Purchases.configure({ apiKey });
+          isConfigured = true;
+        } catch (e) {
+          console.error('RevenueCat auto-configure error:', e);
+        }
+      })();
+      await configurePromise;
+      configurePromise = null;
     }
-  })();
+  }
 
-  await configurePromise;
-  configurePromise = null;
+  // Make sure RC's App User ID matches the current Supabase user so purchases
+  // land on the right customer profile.
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user?.id) {
+      const currentRcId = await Purchases.getAppUserID();
+      if (currentRcId !== session.user.id) {
+        console.log('[revenue] identity mismatch, logging in', session.user.id, 'was', currentRcId);
+        await Purchases.logIn(session.user.id);
+      }
+    }
+  } catch (e) {
+    console.warn('[revenue] identity sync failed:', e);
+  }
+
   return isConfigured;
 }
 
@@ -69,13 +94,30 @@ export async function getOfferings() {
   }
 }
 
+function extractLatestTxnId(customerInfo: CustomerInfo, productId: string): string | null {
+  // RC exposes consumable/non-subscription purchases via nonSubscriptionTransactions
+  const txns = (customerInfo as any).nonSubscriptionTransactions as
+    | Array<{ transactionIdentifier: string; productIdentifier: string; purchaseDate: string }>
+    | undefined;
+  if (!txns || txns.length === 0) return null;
+  const matching = txns.filter(t => t.productIdentifier === productId);
+  if (matching.length === 0) return null;
+  matching.sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime());
+  return matching[0].transactionIdentifier;
+}
+
 export async function purchasePackage(pkg: PurchasesPackage) {
   await ensureConfigured();
   try {
+    console.log('[revenue] purchasePackage →', pkg.product.identifier);
     const { customerInfo } = await Purchases.purchasePackage(pkg);
     await syncTierFromCustomerInfo(customerInfo);
-    return { success: true, customerInfo };
+    const txnId = extractLatestTxnId(customerInfo, pkg.product.identifier);
+    console.log('[revenue] purchase ok, txnId=', txnId, 'nonSubCount=',
+      (customerInfo as any).nonSubscriptionTransactions?.length ?? 0);
+    return { success: true, customerInfo, transactionId: txnId };
   } catch (e: any) {
+    console.log('[revenue] purchasePackage error:', e?.code, e?.message, 'cancelled=', !!e.userCancelled);
     if (e.userCancelled) return { success: false, cancelled: true };
     return { success: false, error: e.message };
   }
@@ -85,14 +127,18 @@ export async function purchaseByProductId(productId: string) {
   const ready = await ensureConfigured();
   if (!ready) return { success: false, error: 'RevenueCat not configured' };
   try {
+    console.log('[revenue] purchaseByProductId →', productId);
     const products = await Purchases.getProducts([productId]);
     if (!products || products.length === 0) {
       return { success: false, error: `Product ${productId} not found in App Store` };
     }
     const { customerInfo } = await Purchases.purchaseStoreProduct(products[0]);
     await syncTierFromCustomerInfo(customerInfo);
-    return { success: true, customerInfo };
+    const txnId = extractLatestTxnId(customerInfo, productId);
+    console.log('[revenue] purchase ok, txnId=', txnId);
+    return { success: true, customerInfo, transactionId: txnId };
   } catch (e: any) {
+    console.log('[revenue] purchaseByProductId error:', e?.code, e?.message);
     if (e.userCancelled) return { success: false, cancelled: true };
     return { success: false, error: e.message };
   }

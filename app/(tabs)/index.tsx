@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  View, Text, FlatList, TouchableOpacity, StyleSheet,
+  View, Text, FlatList, TouchableOpacity, StyleSheet, ScrollView,
   RefreshControl, ActivityIndicator, Alert, Animated, Easing,
 } from 'react-native';
 import Watermark from '../../components/Watermark';
@@ -9,13 +9,20 @@ import UserAvatar from '../../components/UserAvatar';
 import AwardBadge from '../../components/AwardBadge';
 import AwardPicker from '../../components/AwardPicker';
 import EmojiConfetti from '../../components/EmojiConfetti';
+import IdeaBattles from '../../components/IdeaBattles';
+import ContributorBadgeView from '../../components/ContributorBadge';
+import { ArenaBricksMini } from '../../components/ArenaBricks';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../lib/AuthContext';
+import { promptSignUp } from '../../lib/guestGate';
 import { useTheme, Theme } from '../../lib/theme';
+import { useFeatureFlags } from '../../lib/useFeatureFlags';
+import { useReport } from '../../components/ReportButton';
+import { getBlockedUserIds } from '../../lib/blockUser';
 import { Feature, FeatureAwardCount } from '../../lib/types';
 
-type SortBy = 'top' | 'newest' | 'trending';
+type SortBy = 'top' | 'newest' | 'trending' | 'battles';
 
 interface WeeklyStats {
   totalFeatures: number;
@@ -50,8 +57,10 @@ export default function TrendingScreen() {
   const [awardPickerFeatureId, setAwardPickerFeatureId] = useState<string | null>(null);
   const [awardBurst, setAwardBurst] = useState<{ featureId: string; emoji: string } | null>(null);
   const [confettiEmoji, setConfettiEmoji] = useState<string | null>(null);
-  const { session, profile } = useAuthContext();
+  const { session, profile, isGuest } = useAuthContext();
   const { theme } = useTheme();
+  const flags = useFeatureFlags();
+  const { report } = useReport();
   const router = useRouter();
 
   const fetchWeeklyStats = useCallback(async () => {
@@ -172,6 +181,8 @@ export default function TrendingScreen() {
   }, []);
 
   const fetchFeatures = useCallback(async () => {
+    const blockedIds = await getBlockedUserIds();
+
     let query = supabase
       .from('features_with_details')
       .select('*')
@@ -182,7 +193,8 @@ export default function TrendingScreen() {
     else query = query.order('score', { ascending: false });
 
     const { data } = await query.limit(50);
-    setFeatures(data || []);
+    const filtered = (data || []).filter((f: any) => !blockedIds.includes(f.user_id));
+    setFeatures(filtered);
 
     if (session) {
       const { data: votes } = await supabase
@@ -220,6 +232,7 @@ export default function TrendingScreen() {
   const [votingIds, setVotingIds] = useState<Set<string>>(new Set());
 
   async function handleVote(featureId: string) {
+    if (isGuest) { promptSignUp('vote'); return; }
     if (!session || !profile) return;
     if (votingIds.has(featureId)) return;
     setVotingIds(prev => new Set(prev).add(featureId));
@@ -452,6 +465,16 @@ export default function TrendingScreen() {
                   </Text>
                 </View>
               )}
+              {item.is_boosted && (
+                <View style={[s.badge, { backgroundColor: '#ff6b3522' }]}>
+                  <Text style={[s.badgeText, { color: '#ff6b35' }]}>🚀 Boosted</Text>
+                </View>
+              )}
+              {item.battle_wins > 0 && (
+                <View style={[s.badge, { backgroundColor: '#b794f622' }]}>
+                  <Text style={[s.badgeText, { color: '#b794f6' }]}>🥊 {item.battle_wins}</Text>
+                </View>
+              )}
             </View>
           </View>
         </View>
@@ -492,7 +515,13 @@ export default function TrendingScreen() {
             />
             <View>
               <Text style={s.submittedLabel}>Submitted by</Text>
-              <Text style={s.cardAuthor}>{item.author_username || 'anon'} <Text style={s.cardTime}>· {timeAgo(item.created_at)}</Text></Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Text style={s.cardAuthor}>{item.author_username || 'anon'}</Text>
+                {flags.contributor_badges !== false && item.author_contributor_badge && (
+                  <ContributorBadgeView badge={item.author_contributor_badge} size="small" />
+                )}
+                <Text style={s.cardTime}>· {timeAgo(item.created_at)}</Text>
+              </View>
             </View>
           </TouchableOpacity>
           <View style={s.footerRight}>
@@ -503,6 +532,12 @@ export default function TrendingScreen() {
               <Text style={s.awardBtnText}>🏆</Text>
             </TouchableOpacity>
             <Text style={s.cardComments}>💬 {item.comment_count}</Text>
+            <TouchableOpacity
+              onPress={() => report({ contentType: 'feature', contentId: item.id, authorId: item.user_id, authorUsername: item.author_username })}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Text style={s.reportBtn}>···</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -527,45 +562,62 @@ export default function TrendingScreen() {
       <Watermark />
 
       <View style={s.sortBar}>
-        {(['top', 'newest', 'trending'] as SortBy[]).map(sb => (
+        {((['top', 'newest', 'trending'] as SortBy[]).concat(flags.idea_battles !== false ? ['battles' as SortBy] : [])).map(sb => (
           <TouchableOpacity
             key={sb}
-            style={[s.sortTab, sortBy === sb && s.sortTabActive]}
+            style={[
+              s.sortTab,
+              sortBy === sb && s.sortTabActive,
+              sb === 'battles' && s.sortTabBattles,
+              sb === 'battles' && sortBy === sb && s.sortTabBattlesActive,
+            ]}
             onPress={() => setSortBy(sb)}
           >
-            <Text style={[s.sortText, sortBy === sb && s.sortTextActive]}>
-              {sb === 'trending' ? 'Hot' : sb.charAt(0).toUpperCase() + sb.slice(1)}
+            {sb === 'battles' && <ArenaBricksMini />}
+            <Text style={[
+              s.sortText,
+              sortBy === sb && s.sortTextActive,
+              sb === 'battles' && s.sortTextBattles,
+              sb === 'battles' && sortBy === sb && s.sortTextBattlesActive,
+            ]}>
+              {sb === 'trending' ? 'Hot' : sb === 'battles' ? 'Battles' : sb.charAt(0).toUpperCase() + sb.slice(1)}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      <FlatList
-        data={feedItems}
-        keyExtractor={(item, index) => {
-          if (item.kind === 'highlights') return 'highlights';
-          if (item.kind === 'activity') return item.event.id;
-          return item.feature.id;
-        }}
-        renderItem={renderItem}
-        contentContainerStyle={s.list}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => {
-            setRefreshing(true);
-            fetchFeatures();
-            fetchWeeklyStats();
-            fetchActivities();
+      {sortBy === 'battles' ? (
+        <View style={{ flex: 1 }}>
+          <IdeaBattles isActive={sortBy === 'battles'} />
+        </View>
+      ) : (
+        <FlatList
+          data={feedItems}
+          keyExtractor={(item, index) => {
+            if (item.kind === 'highlights') return 'highlights';
+            if (item.kind === 'activity') return item.event.id;
+            return item.feature.id;
           }}
-            tintColor={theme.accent} />
-        }
-        ListEmptyComponent={
-          <View style={s.empty}>
-            <Text style={{ fontSize: 48 }}>📬</Text>
-            <Text style={s.emptyText}>No feature requests yet</Text>
-            <Text style={s.emptySubtext}>Be the first to submit one!</Text>
-          </View>
-        }
-      />
+          renderItem={renderItem}
+          contentContainerStyle={s.list}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={() => {
+              setRefreshing(true);
+              fetchFeatures();
+              fetchWeeklyStats();
+              fetchActivities();
+            }}
+              tintColor={theme.accent} />
+          }
+          ListEmptyComponent={
+            <View style={s.empty}>
+              <Text style={{ fontSize: 48 }}>📬</Text>
+              <Text style={s.emptyText}>No feature requests yet</Text>
+              <Text style={s.emptySubtext}>Be the first to submit one!</Text>
+            </View>
+          }
+        />
+      )}
 
       <AwardPicker
         featureId={awardPickerFeatureId || ''}
@@ -615,8 +667,16 @@ const styles = (t: Theme) => StyleSheet.create({
   },
   sortTab: { paddingHorizontal: 18, paddingVertical: 8, borderRadius: 20, backgroundColor: t.sortInactive },
   sortTabActive: { backgroundColor: t.sortActive },
+  sortTabBattles: {
+    backgroundColor: '#1a0a12', borderWidth: 1, borderColor: '#ff450066', overflow: 'hidden' as const,
+  },
+  sortTabBattlesActive: {
+    backgroundColor: '#ff4500', borderColor: '#ff4500',
+  },
   sortText: { color: t.sortTextInactive, fontWeight: '600', fontSize: 14 },
   sortTextActive: { color: t.sortTextActive },
+  sortTextBattles: { color: '#ff6b35' },
+  sortTextBattlesActive: { color: '#ffffff' },
   list: { padding: 16, paddingBottom: 100 },
 
   // Weekly Highlights
@@ -694,6 +754,7 @@ const styles = (t: Theme) => StyleSheet.create({
   },
   awardBtnText: { fontSize: 16 },
   cardComments: { fontSize: 13, color: t.textMuted },
+  reportBtn: { fontSize: 16, color: t.textMuted + '88', fontWeight: '700', letterSpacing: 2, paddingHorizontal: 2 },
   doubleTapOverlay: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
     alignItems: 'center', justifyContent: 'center', zIndex: 10,

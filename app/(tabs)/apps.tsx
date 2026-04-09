@@ -1,8 +1,13 @@
+import { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
 import Watermark from '../../components/Watermark';
 import { router } from 'expo-router';
 import { useTheme, Theme } from '../../lib/theme';
 import { useAuthContext } from '../../lib/AuthContext';
+import { promptSignUp } from '../../lib/guestGate';
+import { useFeatureFlags } from '../../lib/useFeatureFlags';
+import { supabase } from '../../lib/supabase';
+import { AppMetadata } from '../../lib/types';
 
 interface AppItem {
   id: string;
@@ -11,6 +16,10 @@ interface AppItem {
   desc: string;
   proOnly?: boolean;
 }
+
+const AI_APPS: AppItem[] = [
+  { id: 'ai-chat', name: 'Prodvote AI', emoji: '🤖', desc: 'Chat with AI — brainstorm, write, get help. Free with limits, unlimited for Pro.' },
+];
 
 const PRODUCTIVITY: AppItem[] = [
   { id: 'eisenhower', name: 'Eisenhower Matrix', emoji: '📋', desc: 'Prioritise tasks by urgency and importance across 4 quadrants' },
@@ -32,12 +41,27 @@ const GAMES: AppItem[] = [
 
 export default function AppsScreen() {
   const { theme } = useTheme();
-  const { profile } = useAuthContext();
+  const { profile, isGuest } = useAuthContext();
+  const flags = useFeatureFlags();
   const s = styles(theme);
+  const [appMeta, setAppMeta] = useState<Record<string, AppMetadata>>({});
+  const [showMore, setShowMore] = useState(false);
 
   const isPro = profile?.tier === 'pro' || profile?.tier === 'ultra' || profile?.tier === 'legendary';
 
+  useEffect(() => {
+    supabase.from('app_metadata').select('*').then(({ data }) => {
+      const map: Record<string, AppMetadata> = {};
+      (data || []).forEach((m: AppMetadata) => { map[m.app_id] = m; });
+      setAppMeta(map);
+    });
+  }, []);
+
   function handleAppPress(app: AppItem) {
+    if (isGuest && (app.id === 'ai-chat' || app.proOnly)) {
+      promptSignUp('use this');
+      return;
+    }
     if (app.proOnly && !isPro) {
       Alert.alert(
         'Pro Feature',
@@ -54,6 +78,8 @@ export default function AppsScreen() {
 
   function renderApp(app: AppItem) {
     const locked = app.proOnly && !isPro;
+    const meta = appMeta[app.id];
+    const showCommunityMeta = flags.built_by_community !== false && meta;
     return (
       <TouchableOpacity
         key={app.id}
@@ -76,33 +102,62 @@ export default function AppsScreen() {
             )}
           </View>
           <Text style={[s.appDesc, locked && s.appDescLocked]} numberOfLines={2}>{app.desc}</Text>
+          {showCommunityMeta && (
+            <View style={s.communityMeta}>
+              {meta.suggested_by && (
+                <Text style={s.metaText}>Suggested by @{meta.suggested_by}</Text>
+              )}
+              {meta.vote_count > 0 && (
+                <Text style={s.metaText}>Built from {meta.vote_count} votes</Text>
+              )}
+            </View>
+          )}
         </View>
         <Text style={[s.chevron, locked && s.chevronLocked]}>{locked ? '🔒' : '›'}</Text>
       </TouchableOpacity>
     );
   }
 
+  const productivityFree = PRODUCTIVITY.filter(a => !a.proOnly);
+  const productivityPro = PRODUCTIVITY.filter(a => a.proOnly);
+
   return (
     <View style={s.container}>
       <Watermark />
     <ScrollView style={{ flex: 1 }} contentContainerStyle={s.content}>
 
-      <Text style={s.heading}>Apps</Text>
+      <Text style={s.heading}>Built by Community</Text>
 
-      {PRODUCTIVITY.filter(a => !a.proOnly).map(renderApp)}
+      {!isGuest && (
+        <>
+          <View style={s.sectionHeader}>
+            <Text style={s.sectionTitle}>🤖 AI</Text>
+            <Text style={s.sectionCount}>Powered by Gemini</Text>
+          </View>
+          {AI_APPS.map(renderApp)}
+        </>
+      )}
 
       <View style={s.sectionHeader}>
-        <Text style={s.sectionTitle}>PRO APPS</Text>
-        <Text style={s.sectionCount}>{isPro ? 'Unlocked' : 'Upgrade to unlock'}</Text>
+        <Text style={s.sectionTitle}>⚡ PRODUCTIVITY</Text>
+        <Text style={s.sectionCount}>{productivityFree.length} apps</Text>
       </View>
+      {productivityFree.map(renderApp)}
 
-      {PRODUCTIVITY.filter(a => a.proOnly).map(renderApp)}
+      {productivityPro.length > 0 && (
+        <>
+          <View style={s.sectionHeader}>
+            <Text style={s.sectionTitle}>👑 PRO</Text>
+            <Text style={s.sectionCount}>{isPro ? 'Unlocked' : 'Upgrade to unlock'}</Text>
+          </View>
+          {productivityPro.map(renderApp)}
+        </>
+      )}
 
       <View style={s.sectionHeader}>
-        <Text style={s.sectionTitle}>GAMES</Text>
+        <Text style={s.sectionTitle}>🎮 GAMES</Text>
         <Text style={s.sectionCount}>{GAMES.length} games</Text>
       </View>
-
       {GAMES.map(renderApp)}
     </ScrollView>
     </View>
@@ -146,6 +201,10 @@ const styles = (t: Theme) => StyleSheet.create({
   proBadgeTextUnlocked: { color: t.success },
   chevron: { fontSize: 24, color: t.textMuted, marginLeft: 8 },
   chevronLocked: { fontSize: 16 },
+  communityMeta: {
+    flexDirection: 'row', gap: 8, marginTop: 4, flexWrap: 'wrap',
+  },
+  metaText: { fontSize: 11, color: t.textMuted, fontWeight: '500' },
   sectionHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingHorizontal: 16, paddingTop: 20, paddingBottom: 10,

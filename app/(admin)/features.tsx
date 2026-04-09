@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  RefreshControl, ActivityIndicator, Alert, TextInput,
+  RefreshControl, ActivityIndicator, Alert, TextInput, Platform,
 } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../lib/AuthContext';
@@ -51,30 +51,37 @@ export default function AdminFeaturesScreen() {
 
   const onRefresh = () => { setRefreshing(true); fetchFeatures(); };
 
+  const applyStatus = async (feature: Feature, status: FeatureStatus) => {
+    const updates: any = { status };
+    if (status === 'shipped') updates.shipped_at = new Date().toISOString();
+    const { error } = await supabase.from('features').update(updates).eq('id', feature.id);
+    if (error) {
+      if (Platform.OS === 'web') window.alert(`Error: ${error.message}`);
+      else Alert.alert('Error', error.message);
+      return;
+    }
+    setFeatures(prev => prev.map(f => f.id === feature.id ? { ...f, ...updates } : f));
+  };
+
   const changeStatus = (feature: Feature) => {
+    const options = STATUSES.filter(s => s !== feature.status);
+    if (Platform.OS === 'web') {
+      const choice = window.prompt(
+        `Change status for "${feature.title}"\nCurrent: ${STATUS_LABELS[feature.status]}\n\n${options.map((s, i) => `${i + 1}. ${STATUS_LABELS[s]}`).join('\n')}\n\nEnter a number (1-${options.length}):`
+      );
+      if (!choice) return;
+      const idx = parseInt(choice, 10) - 1;
+      const picked = options[idx];
+      if (picked) applyStatus(feature, picked);
+      return;
+    }
     Alert.alert(
       'Change Status',
       `Current: ${STATUS_LABELS[feature.status]}\n"${feature.title}"`,
       [
-        ...STATUSES.filter(s => s !== feature.status).map(status => ({
+        ...options.map(status => ({
           text: STATUS_LABELS[status],
-          onPress: async () => {
-            const updates: any = { status };
-            if (status === 'shipped') updates.shipped_at = new Date().toISOString();
-
-            const { error } = await supabase
-              .from('features')
-              .update(updates)
-              .eq('id', feature.id);
-
-            if (error) {
-              Alert.alert('Error', error.message);
-            } else {
-              setFeatures(prev =>
-                prev.map(f => f.id === feature.id ? { ...f, ...updates } : f)
-              );
-            }
-          },
+          onPress: () => applyStatus(feature, status),
         })),
         { text: 'Cancel', style: 'cancel' },
       ]

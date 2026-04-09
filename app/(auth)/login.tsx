@@ -11,19 +11,28 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signIn } = useAuthContext();
+  const [demoLoading, setDemoLoading] = useState(false);
+  const { signIn, signInAsGuest } = useAuthContext();
   const router = useRouter();
   const { theme } = useTheme();
 
+  function notify(title: string, msg: string) {
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined') window.alert(`${title}\n\n${msg}`);
+    } else {
+      Alert.alert(title, msg);
+    }
+  }
+
   async function handleLogin() {
     if (!email.trim() || !password.trim()) {
-      Alert.alert('Error', 'Please fill in all fields');
+      notify('Error', 'Please fill in all fields');
       return;
     }
     setLoading(true);
     const { error } = await signIn(email.trim(), password);
     setLoading(false);
-    if (error) Alert.alert('Login Failed', error.message);
+    if (error) notify('Login Failed', error.message);
   }
 
   const s = styles(theme);
@@ -67,10 +76,39 @@ export default function LoginScreen() {
             )}
           </TouchableOpacity>
 
+          <TouchableOpacity onPress={() => router.push('/(auth)/forgot-password' as any)}>
+            <Text style={[s.linkText, { marginTop: 12 }]}>
+              <Text style={s.linkBold}>Forgot password?</Text>
+            </Text>
+          </TouchableOpacity>
+
           <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
             <Text style={s.linkText}>
               Don't have an account? <Text style={s.linkBold}>Sign Up</Text>
             </Text>
+          </TouchableOpacity>
+
+          <View style={s.divider}>
+            <View style={s.dividerLine} />
+            <Text style={s.dividerText}>or</Text>
+            <View style={s.dividerLine} />
+          </View>
+
+          <TouchableOpacity
+            style={s.demoButton}
+            onPress={async () => {
+              setDemoLoading(true);
+              const { error } = await signInAsGuest();
+              setDemoLoading(false);
+              if (error) notify('Guest Mode Unavailable', error.message || 'Please try again later.');
+            }}
+            disabled={demoLoading}
+          >
+            {demoLoading ? (
+              <ActivityIndicator color={theme.accent} />
+            ) : (
+              <Text style={s.demoButtonText}>Try as Guest</Text>
+            )}
           </TouchableOpacity>
         </View>
       </View>
@@ -97,4 +135,14 @@ const styles = (t: Theme) => StyleSheet.create({
   buttonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
   linkText: { color: t.textMuted, textAlign: 'center', marginTop: 16, fontSize: 15 },
   linkBold: { color: t.accent, fontWeight: '600' },
+  divider: {
+    flexDirection: 'row', alignItems: 'center', marginTop: 20, marginBottom: 4,
+  },
+  dividerLine: { flex: 1, height: 1, backgroundColor: t.cardBorder },
+  dividerText: { color: t.textMuted, fontSize: 13, marginHorizontal: 12 },
+  demoButton: {
+    borderRadius: 14, padding: 16, alignItems: 'center',
+    borderWidth: 1, borderColor: t.cardBorder, backgroundColor: t.card,
+  },
+  demoButtonText: { color: t.text, fontSize: 16, fontWeight: '600' },
 });

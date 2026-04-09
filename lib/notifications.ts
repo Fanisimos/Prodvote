@@ -61,18 +61,33 @@ export async function notifyFeatureShipped(featureTitle: string) {
   );
 }
 
-export async function scheduleDailyRewardReminder() {
+export async function scheduleDailyRewardReminder(lastClaimedAt?: string | null) {
   if (Platform.OS === 'web') return;
-  await Notifications.cancelAllScheduledNotificationsAsync();
+
+  // Cancel any existing daily reward notifications
+  const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+  for (const n of scheduled) {
+    if ((n.content.data as any)?.type === 'daily_reward') {
+      await Notifications.cancelScheduledNotificationAsync(n.identifier);
+    }
+  }
+
+  // Only schedule a reminder if the reward is in the future.
+  // If reward is already claimable (lastClaimedAt null or >24h ago), do NOT schedule —
+  // the user is in-app and will see the button. This prevents re-firing after a claim.
+  if (!lastClaimedAt) return;
+  const triggerDate = new Date(new Date(lastClaimedAt).getTime() + 24 * 60 * 60 * 1000);
+  if (triggerDate.getTime() <= Date.now() + 60 * 1000) return;
+
   await Notifications.scheduleNotificationAsync({
     content: {
       title: '🎁 Daily reward ready!',
       body: 'Spin the fortune wheel to claim your free coins.',
+      data: { type: 'daily_reward', route: '/(tabs)/profile' },
     },
     trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.DAILY,
-      hour: 10,
-      minute: 0,
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date: triggerDate,
     },
   });
 }

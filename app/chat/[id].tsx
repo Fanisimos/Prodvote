@@ -6,36 +6,45 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../lib/AuthContext';
+import { promptSignUp } from '../../lib/guestGate';
 import { useTheme, Theme } from '../../lib/theme';
 import { Message } from '../../lib/types';
 import UserAvatar from '../../components/UserAvatar';
+import { useReport } from '../../components/ReportButton';
+import { getBlockedUserIds } from '../../lib/blockUser';
 
 export default function ChatDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { session } = useAuthContext();
+  const { session, isGuest } = useAuthContext();
   const { theme } = useTheme();
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
+  const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set());
   const flatListRef = useRef<FlatList>(null);
+  const { report } = useReport();
 
   const fetchMessages = useCallback(async () => {
     setLoading(true);
+    const blocked = await getBlockedUserIds();
+    setBlockedIds(new Set(blocked));
     const { data } = await supabase
       .from('messages')
       .select('*, profiles(username, avatar_url, tier, active_frame:active_frame_id(animation_type, color))')
       .eq('channel_id', id)
       .order('created_at', { ascending: false })
       .limit(100);
-    const mapped = (data || []).map((m: any) => ({
-      ...m,
-      username: m.profiles?.username,
-      avatar_url: m.profiles?.avatar_url,
-      tier: m.profiles?.tier,
-      frame_animation: m.profiles?.active_frame?.animation_type || null,
-      frame_color: m.profiles?.active_frame?.color || null,
-    }));
+    const mapped = (data || [])
+      .filter((m: any) => !blocked.includes(m.user_id))
+      .map((m: any) => ({
+        ...m,
+        username: m.profiles?.username,
+        avatar_url: m.profiles?.avatar_url,
+        tier: m.profiles?.tier,
+        frame_animation: m.profiles?.active_frame?.animation_type || null,
+        frame_color: m.profiles?.active_frame?.color || null,
+      }));
     setMessages(mapped);
     setLoading(false);
   }, [id]);
@@ -48,6 +57,7 @@ export default function ChatDetailScreen() {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `channel_id=eq.${id}` },
         async (payload) => {
           const newMsg = payload.new as Message;
+          if (blockedIds.has(newMsg.user_id)) return;
           const { data: profileData } = await supabase.from('profiles').select('username, avatar_url, tier, active_frame:active_frame_id(animation_type, color)').eq('id', newMsg.user_id).single();
           const enriched: Message = {
             ...newMsg,
@@ -64,6 +74,7 @@ export default function ChatDetailScreen() {
   }, [id]);
 
   async function handleSend() {
+    if (isGuest) { promptSignUp('chat'); return; }
     if (!text.trim() || !session) return;
     setSending(true);
     await supabase.from('messages').insert({ channel_id: id, user_id: session.user.id, body: text.trim() });
@@ -115,7 +126,17 @@ export default function ChatDetailScreen() {
               <View style={[s.bubble, isMe && s.bubbleMe]}>
                 <View style={s.bubbleHeader}>
                   <Text style={[s.bubbleUser, isMe && { color: theme.accent }]}>{item.username || 'anon'}</Text>
-                  <Text style={s.bubbleTime}>{timeAgo(item.created_at)}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text style={s.bubbleTime}>{timeAgo(item.created_at)}</Text>
+                    {!isMe && (
+                      <TouchableOpacity
+                        onPress={() => report({ contentType: 'message', contentId: item.id, authorId: item.user_id, authorUsername: item.username })}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      >
+                        <Text style={{ color: theme.textMuted, fontSize: 14 }}>···</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 </View>
                 <Text style={s.bubbleBody}>{item.body}</Text>
               </View>

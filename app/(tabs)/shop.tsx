@@ -1,18 +1,25 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  Alert, RefreshControl, ScrollView,
+  Alert, RefreshControl, ScrollView, Modal,
 } from 'react-native';
 import Watermark from '../../components/Watermark';
 import UserAvatar from '../../components/UserAvatar';
 import { useRouter } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../lib/AuthContext';
+import { promptSignUp } from '../../lib/guestGate';
 import { useTheme, Theme } from '../../lib/theme';
 import { Badge, AvatarFrame } from '../../lib/types';
 import { purchasePackage, getOfferings, purchaseByProductId } from '../../lib/revenue';
 
-type Tab = 'badges' | 'frames' | 'coins';
+type Tab = 'badges' | 'frames';
+
+const COIN_PACK_META: Record<string, { coins: number; price: string; label: string }> = {
+  prodvote_coins_1000: { coins: 1000, price: '£4.99', label: 'Starter' },
+  prodvote_coins_2500: { coins: 2500, price: '£8.99', label: 'Popular' },
+  prodvote_coins_5000: { coins: 5000, price: '£14.99', label: 'Best Value' },
+};
 
 const COIN_USES = [
   { emoji: '🛡️', title: 'Buy Badges', desc: 'Show off unique badges next to your name on comments' },
@@ -21,10 +28,11 @@ const COIN_USES = [
 ];
 
 export default function ShopScreen() {
-  const { profile, fetchProfile } = useAuthContext();
+  const { profile, fetchProfile, isGuest } = useAuthContext();
   const { theme } = useTheme();
   const router = useRouter();
   const [tab, setTab] = useState<Tab>('badges');
+  const [showCoinModal, setShowCoinModal] = useState(false);
   const [badges, setBadges] = useState<Badge[]>([]);
   const [frames, setFrames] = useState<AvatarFrame[]>([]);
   const [ownedBadgeIds, setOwnedBadgeIds] = useState<Set<number>>(new Set());
@@ -49,6 +57,7 @@ export default function ShopScreen() {
   useEffect(() => { fetchShop(); }, [fetchShop]);
 
   async function buyBadge(badge: Badge) {
+    if (isGuest) { promptSignUp('buy badges'); return; }
     if (!profile) return;
     if (ownedBadgeIds.has(badge.id)) {
       await supabase.from('profiles').update({ active_badge_id: badge.id }).eq('id', profile.id);
@@ -88,6 +97,7 @@ export default function ShopScreen() {
   }
 
   async function buyFrame(frame: AvatarFrame) {
+    if (isGuest) { promptSignUp('buy frames'); return; }
     if (!profile) return;
     if (ownedFrameIds.has(frame.id)) {
       await supabase.from('profiles').update({ active_frame_id: frame.id }).eq('id', profile.id);
@@ -128,12 +138,14 @@ export default function ShopScreen() {
   };
 
   async function buyCoinPack(productId: string) {
+    if (isGuest) { promptSignUp('buy coins'); return; }
     if (!profile) return;
     const coinAmount = COIN_PACKS[productId];
     if (!coinAmount) {
       Alert.alert('Error', 'Unknown coin pack.');
       return;
     }
+    setShowCoinModal(false);
     try {
       // Try offering first, fall back to direct product purchase
       const offering = await getOfferings();
@@ -146,25 +158,28 @@ export default function ShopScreen() {
         result = await purchaseByProductId(productId);
       }
       if (result.success) {
-        // Credit coins to user's profile
-        const { data: freshProfile } = await supabase
-          .from('profiles')
-          .select('coins')
-          .eq('id', profile.id)
-          .single();
-        const currentCoins = freshProfile?.coins ?? 0;
-        await supabase
-          .from('profiles')
-          .update({ coins: currentCoins + coinAmount })
-          .eq('id', profile.id);
-        // Log the transaction
-        await supabase.from('coin_rewards').insert({
-          user_id: profile.id,
-          amount: coinAmount,
-          reward_type: `iap_${productId}`,
+        console.log('[shop] purchase success, txnId=', (result as any).transactionId);
+        // Credit coins server-side — idempotent on txn_id to prevent double-credit
+        const { data: rpcData, error: rpcError } = await supabase.rpc('credit_coin_purchase', {
+          p_user_id: profile.id,
+          p_amount: coinAmount,
+          p_product_id: productId,
+          p_txn_id: (result as any).transactionId ?? null,
         });
+        if (rpcError) {
+          Alert.alert('Error', `Purchase succeeded but credit failed: ${rpcError.message}`);
+          return;
+        }
+        const credited = Array.isArray(rpcData) ? rpcData[0]?.credited : (rpcData as any)?.credited;
         await fetchProfile();
-        Alert.alert('Coins Added!', `${coinAmount.toLocaleString()} coins have been credited to your account.`);
+        if (credited) {
+          Alert.alert('Coins Added!', `${coinAmount.toLocaleString()} coins have been credited to your account.`);
+        } else {
+          Alert.alert(
+            'Already Credited',
+            'This transaction was already processed. No duplicate coins were added.',
+          );
+        }
       } else if (!result.cancelled) {
         Alert.alert('Error', result.error || 'Purchase failed');
       }
@@ -188,14 +203,14 @@ export default function ShopScreen() {
             <Text style={s.coinLabel}>Your Coins</Text>
           </View>
         </View>
-        <TouchableOpacity style={s.buyCoinBtn} onPress={() => setTab('coins')}>
+        <TouchableOpacity style={s.buyCoinBtn} onPress={() => setShowCoinModal(true)}>
           <Text style={s.buyCoinText}>+ Buy Coins</Text>
         </TouchableOpacity>
       </View>
 
       {/* Tab Switcher */}
       <View style={s.tabRow}>
-        {(['badges', 'frames', 'coins'] as Tab[]).map(t => (
+        {(['badges', 'frames'] as Tab[]).map(t => (
           <TouchableOpacity
             key={t}
             style={[s.tabBtn, tab === t && s.tabActive]}
@@ -280,9 +295,21 @@ export default function ShopScreen() {
         />
       )}
 
-      {tab === 'coins' && (
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
-          <Text style={s.coinSectionTitle}>Get More Coins</Text>
+      <Modal
+        visible={showCoinModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowCoinModal(false)}
+      >
+        <View style={s.modalBackdrop}>
+          <View style={s.modalSheet}>
+            <View style={s.modalHeader}>
+              <Text style={s.coinSectionTitle}>Get More Coins</Text>
+              <TouchableOpacity onPress={() => setShowCoinModal(false)}>
+                <Text style={{ fontSize: 28, color: theme.textMuted }}>×</Text>
+              </TouchableOpacity>
+            </View>
+        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
           <Text style={s.coinSectionDesc}>Use coins to buy badges and unlock exclusive features</Text>
 
           {/* 1000 Coins */}
@@ -343,7 +370,9 @@ export default function ShopScreen() {
             ))}
           </View>
         </ScrollView>
-      )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -412,4 +441,11 @@ const styles = (t: Theme) => StyleSheet.create({
   coinUseRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 14 },
   coinUseTitle: { fontSize: 15, fontWeight: '700', color: t.text },
   coinUseDesc: { fontSize: 13, color: t.textSecondary, marginTop: 2, lineHeight: 18 },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalSheet: { backgroundColor: t.bg, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '90%' },
+  modalHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8,
+    borderBottomWidth: 1, borderBottomColor: t.cardBorder,
+  },
 });

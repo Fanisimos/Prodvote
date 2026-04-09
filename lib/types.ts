@@ -28,6 +28,10 @@ export interface Profile {
   referral_code: string | null;
   referred_by: string | null;
   has_been_prompted_rating: boolean;
+  ideas_submitted?: number;
+  total_votes_cast?: number;
+  winning_ideas?: number;
+  contributor_badge?: string | null;
   created_at: string;
 }
 
@@ -58,10 +62,12 @@ export interface Feature {
   author_tier?: Tier;
   author_frame_animation?: string | null;
   author_frame_color?: string | null;
+  author_contributor_badge?: string | null;
   category_name?: string;
   category_color?: string;
   category_icon?: string;
   boost_count?: number;
+  battle_wins?: number;
   user_has_voted?: boolean;
 }
 
@@ -250,3 +256,39 @@ export interface CommentAward {
   created_at: string;
   badge?: Badge;
 }
+
+export interface IdeaBattleVote {
+  id: string;
+  user_id: string;
+  idea_a_id: string;
+  idea_b_id: string;
+  winner_id: string;
+  created_at: string;
+}
+
+export interface Boost {
+  id: string;
+  user_id: string;
+  feature_id: string;
+  created_at: string;
+}
+
+export interface FeatureFlag {
+  id: string;
+  key: string;
+  enabled: boolean;
+  description: string | null;
+  updated_at: string;
+}
+
+export interface AppMetadata {
+  id: string;
+  app_id: string;
+  suggested_by: string | null;
+  vote_count: number;
+  status: string;
+  is_featured: boolean;
+  created_at: string;
+}
+
+export type ContributorBadge = 'contributor' | 'prolific' | 'power_voter' | 'builder' | 'legend';

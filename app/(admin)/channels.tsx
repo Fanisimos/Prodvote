@@ -8,6 +8,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuthContext } from '../../lib/AuthContext';
 import { Channel } from '../../lib/types';
 import { useTheme, Theme } from '../../lib/theme';
+import { notify, confirmAction } from '../../lib/adminUI';
 
 export default function AdminChannelsScreen() {
   const [channels, setChannels] = useState<Channel[]>([]);
@@ -42,7 +43,7 @@ export default function AdminChannelsScreen() {
 
   const createChannel = async () => {
     if (!formName.trim()) {
-      Alert.alert('Error', 'Channel name is required.');
+      notify('Error', 'Channel name is required.');
       return;
     }
 
@@ -60,42 +61,22 @@ export default function AdminChannelsScreen() {
     setSubmitting(false);
 
     if (error) {
-      Alert.alert('Error', error.message);
+      notify('Error', error.message);
     } else if (data) {
       setChannels(prev => [...prev, data]);
       resetForm();
     }
   };
 
-  const deleteChannel = (channel: Channel) => {
+  const deleteChannel = async (channel: Channel) => {
     if (channel.is_locked) {
-      Alert.alert('Cannot Delete', 'This is the default channel and cannot be deleted.');
+      notify('Cannot Delete', 'This is the default channel and cannot be deleted.');
       return;
     }
-
-    Alert.alert(
-      'Delete Channel',
-      `Are you sure you want to delete "#${channel.name}"? All messages in this channel will be deleted.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            const { error } = await supabase
-              .from('channels')
-              .delete()
-              .eq('id', channel.id);
-
-            if (error) {
-              Alert.alert('Error', error.message);
-            } else {
-              setChannels(prev => prev.filter(c => c.id !== channel.id));
-            }
-          },
-        },
-      ]
-    );
+    if (!(await confirmAction('Delete Channel', `Delete "#${channel.name}"? All messages will be lost.`))) return;
+    const { error } = await supabase.from('channels').delete().eq('id', channel.id);
+    if (error) notify('Error', error.message);
+    else setChannels(prev => prev.filter(c => c.id !== channel.id));
   };
 
   const s = makeStyles(theme);

@@ -22,17 +22,21 @@ export default function AdminDashboard() {
   const { theme } = useTheme();
 
   const fetchStats = useCallback(async () => {
-    const [users, features, votes, messages] = await Promise.all([
+    const [users, features, votes, messages, battles, boosts] = await Promise.all([
       supabase.from('profiles').select('*', { count: 'exact', head: true }),
       supabase.from('features').select('*', { count: 'exact', head: true }),
       supabase.from('votes').select('*', { count: 'exact', head: true }),
       supabase.from('messages').select('*', { count: 'exact', head: true }),
+      supabase.from('idea_battle_votes').select('*', { count: 'exact', head: true }),
+      supabase.from('boosts').select('*', { count: 'exact', head: true }),
     ]);
 
     setStats([
       { label: 'Total Users', value: users.count ?? 0, icon: '👥', route: '/(admin)/users' },
       { label: 'Total Features', value: features.count ?? 0, icon: '💡', route: '/(admin)/features' },
       { label: 'Total Votes', value: votes.count ?? 0, icon: '🗳️' },
+      { label: 'Battle Votes', value: battles.count ?? 0, icon: '⚔️', route: '/(admin)/battles' },
+      { label: 'Total Boosts', value: boosts.count ?? 0, icon: '🚀', route: '/(admin)/boosts' },
       { label: 'Total Messages', value: messages.count ?? 0, icon: '💬', route: '/(admin)/channels' },
     ]);
 
@@ -81,6 +85,12 @@ export default function AdminDashboard() {
         {[
           { label: 'Manage Users', route: '/(admin)/users', icon: '👥' },
           { label: 'Manage Features', route: '/(admin)/features', icon: '💡' },
+          { label: 'Idea Battles', route: '/(admin)/battles', icon: '⚔️' },
+          { label: 'Boosts', route: '/(admin)/boosts', icon: '🚀' },
+          { label: 'Contributors', route: '/(admin)/contributors', icon: '🌟' },
+          { label: 'App Metadata', route: '/(admin)/app-metadata', icon: '🧩' },
+          { label: 'Feature Flags', route: '/(admin)/flags', icon: '🚩' },
+          { label: 'Content Reports', route: '/(admin)/reports', icon: '🚨' },
           { label: 'Manage Badges', route: '/(admin)/badges', icon: '🏅' },
           { label: 'Manage Channels', route: '/(admin)/channels', icon: '📢' },
           { label: 'Subscriptions', route: '/(admin)/subscriptions', icon: '💎' },
