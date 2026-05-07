@@ -243,7 +243,7 @@ export default function FeatureDetailScreen() {
                     size={28}
                   />
                   <TouchableOpacity onPress={() => router.push(`/user/${comment.username}` as any)}>
-                    <Text style={s.commentAuthor}>
+                    <Text style={[s.commentAuthor, comment.tier === 'legendary' && s.commentAuthorLegendary]}>
                       {comment.username || 'anon'}{comment.is_dev_reply && ' (Dev)'}
                     </Text>
                   </TouchableOpacity>
@@ -355,6 +355,7 @@ const styles = (t: Theme) => StyleSheet.create({
   commentDev: { borderColor: t.success + '44', backgroundColor: t.successBg },
   commentHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
   commentAuthor: { fontSize: 13, fontWeight: '600', color: t.textSecondary },
+  commentAuthorLegendary: { color: '#FFD700' },
   commentTime: { fontSize: 12, color: t.textMuted },
   commentBody: { fontSize: 14, color: t.text, lineHeight: 20 },
   commentBar: {

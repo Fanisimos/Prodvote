@@ -63,6 +63,17 @@ export function useAuth() {
     return () => subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    const userId = session?.user?.id;
+    if (!userId) return;
+    const channel = supabase
+      .channel(`profile-${userId}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${userId}` },
+        () => { fetchProfile(userId); })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [session?.user?.id, fetchProfile]);
+
   async function signUp(email: string, password: string, username: string) {
     const { error } = await supabase.auth.signUp({
       email,

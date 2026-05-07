@@ -66,20 +66,16 @@ export default function TrendingScreen() {
   const fetchWeeklyStats = useCallback(async () => {
     const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-    const [featuresRes, votesRes, shippedRes, usersRes] = await Promise.all([
+    const [featuresRes, votesRes, shippedRes, usersRes, topVoterRes] = await Promise.all([
       supabase.from('features').select('id', { count: 'exact', head: true }).gte('created_at', oneWeekAgo),
       supabase.from('votes').select('id', { count: 'exact', head: true }).gte('created_at', oneWeekAgo),
       supabase.from('features').select('id', { count: 'exact', head: true }).eq('status', 'shipped').gte('shipped_at', oneWeekAgo),
       supabase.from('profiles').select('id', { count: 'exact', head: true }).gte('created_at', oneWeekAgo),
+      supabase.from('votes').select('user_id').gte('created_at', oneWeekAgo),
     ]);
 
-    // Top voter this week
-    const { data: topVoterData } = await supabase
-      .from('votes')
-      .select('user_id')
-      .gte('created_at', oneWeekAgo);
-
     let topVoter: string | null = null;
+    const topVoterData = topVoterRes.data;
     if (topVoterData && topVoterData.length > 0) {
       const voteCounts: Record<string, number> = {};
       topVoterData.forEach(v => {
@@ -549,14 +545,6 @@ export default function TrendingScreen() {
 
   const s = styles(theme);
 
-  if (loading) {
-    return (
-      <View style={s.center}>
-        <ActivityIndicator size="large" color={theme.accent} />
-      </View>
-    );
-  }
-
   return (
     <View style={s.container}>
       <Watermark />
@@ -610,11 +598,17 @@ export default function TrendingScreen() {
               tintColor={theme.accent} />
           }
           ListEmptyComponent={
-            <View style={s.empty}>
-              <Text style={{ fontSize: 48 }}>📬</Text>
-              <Text style={s.emptyText}>No feature requests yet</Text>
-              <Text style={s.emptySubtext}>Be the first to submit one!</Text>
-            </View>
+            loading ? (
+              <View style={s.empty}>
+                <ActivityIndicator size="large" color={theme.accent} />
+              </View>
+            ) : (
+              <View style={s.empty}>
+                <Text style={{ fontSize: 48 }}>📬</Text>
+                <Text style={s.emptyText}>No feature requests yet</Text>
+                <Text style={s.emptySubtext}>Be the first to submit one!</Text>
+              </View>
+            )
           }
         />
       )}
@@ -623,9 +617,14 @@ export default function TrendingScreen() {
         featureId={awardPickerFeatureId || ''}
         visible={!!awardPickerFeatureId}
         onClose={() => setAwardPickerFeatureId(null)}
-        onAwarded={(emoji) => {
-          setAwardBurst({ featureId: awardPickerFeatureId!, emoji });
-          fetchFeatures();
+        onAwarded={async (emoji) => {
+          const fid = awardPickerFeatureId!;
+          setAwardBurst({ featureId: fid, emoji });
+          const { data: awardData } = await supabase
+            .from('feature_award_counts')
+            .select('*')
+            .eq('feature_id', fid);
+          setFeatureAwards(prev => ({ ...prev, [fid]: awardData || [] }));
         }}
       />
 

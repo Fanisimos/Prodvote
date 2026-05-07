@@ -23,12 +23,15 @@ export default function ChatDetailScreen() {
   const [sending, setSending] = useState(false);
   const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set());
   const flatListRef = useRef<FlatList>(null);
+  const blockedIdsRef = useRef<Set<string>>(new Set());
   const { report } = useReport();
 
   const fetchMessages = useCallback(async () => {
     setLoading(true);
     const blocked = await getBlockedUserIds();
-    setBlockedIds(new Set(blocked));
+    const blockedSet = new Set(blocked);
+    setBlockedIds(blockedSet);
+    blockedIdsRef.current = blockedSet;
     const { data } = await supabase
       .from('messages')
       .select('*, profiles(username, avatar_url, tier, active_frame:active_frame_id(animation_type, color))')
@@ -57,7 +60,7 @@ export default function ChatDetailScreen() {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `channel_id=eq.${id}` },
         async (payload) => {
           const newMsg = payload.new as Message;
-          if (blockedIds.has(newMsg.user_id)) return;
+          if (blockedIdsRef.current.has(newMsg.user_id)) return;
           const { data: profileData } = await supabase.from('profiles').select('username, avatar_url, tier, active_frame:active_frame_id(animation_type, color)').eq('id', newMsg.user_id).single();
           const enriched: Message = {
             ...newMsg,
@@ -67,7 +70,7 @@ export default function ChatDetailScreen() {
             frame_animation: (profileData as any)?.active_frame?.animation_type || null,
             frame_color: (profileData as any)?.active_frame?.color || null,
           };
-          setMessages(prev => [enriched, ...prev]);
+          setMessages(prev => prev.some(m => m.id === enriched.id) ? prev : [enriched, ...prev]);
         })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
