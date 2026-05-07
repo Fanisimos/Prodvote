@@ -157,20 +157,35 @@ export async function restorePurchases() {
 
 export async function syncTierFromCustomerInfo(info: CustomerInfo) {
   const entitlements = info.entitlements.active;
-  let tier: 'free' | 'pro' | 'ultra' | 'legendary' = 'free';
+  let rcTier: 'free' | 'pro' | 'ultra' | 'legendary' = 'free';
 
   if (entitlements['legendary']) {
-    tier = 'legendary';
+    rcTier = 'legendary';
   } else if (entitlements['ultra']) {
-    tier = 'ultra';
+    rcTier = 'ultra';
   } else if (entitlements['pro']) {
-    tier = 'pro';
+    rcTier = 'pro';
   }
+
+  // Never downgrade from sync — RC reporting "no entitlement" is ambiguous
+  // (could mean: never paid, or admin granted manually, or a transient
+  // restore failure). Only the server-side webhook should downgrade after
+  // confirmed expiry. Local sync only ever upgrades.
+  if (rcTier === 'free') return;
 
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) return;
 
-  await supabase.from('profiles').update({ tier }).eq('id', session.user.id);
+  const tierRank = { free: 0, pro: 1, ultra: 2, legendary: 3 } as const;
+  const { data: profileRow } = await supabase
+    .from('profiles')
+    .select('tier')
+    .eq('id', session.user.id)
+    .single();
+  const currentTier = (profileRow?.tier as keyof typeof tierRank) || 'free';
+  if (tierRank[rcTier] <= tierRank[currentTier]) return;
+
+  await supabase.from('profiles').update({ tier: rcTier }).eq('id', session.user.id);
 }
 
 export async function checkSubscriptionStatus() {
