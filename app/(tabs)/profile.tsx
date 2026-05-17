@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView, Share, Platform, Linking } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ScrollView, Share, Platform } from 'react-native';
 import Watermark from '../../components/Watermark';
 import UserAvatar from '../../components/UserAvatar';
 import { router } from 'expo-router';
@@ -10,7 +10,6 @@ import { Feature, Badge, AvatarFrame } from '../../lib/types';
 import ContributorBadgeView from '../../components/ContributorBadge';
 import AdminBell from '../../components/AdminBell';
 import { registerForPushNotifications, scheduleDailyRewardReminder } from '../../lib/notifications';
-import { confirmDeleteAccount } from '../../lib/deleteAccount';
 import * as StoreReview from 'expo-store-review';
 
 async function maybePromptRating(userId: string) {
@@ -28,7 +27,7 @@ async function maybePromptRating(userId: string) {
 
 export default function ProfileScreen() {
   const { profile, signOut, fetchProfile, isGuest } = useAuthContext();
-  const { theme, isDark, toggleTheme } = useTheme();
+  const { theme } = useTheme();
   const [submissions, setSubmissions] = useState<Feature[]>([]);
   const [ownedBadges, setOwnedBadges] = useState<(Badge & { owned: boolean })[]>([]);
   const [ownedFrames, setOwnedFrames] = useState<(AvatarFrame & { owned: boolean })[]>([]);
@@ -140,10 +139,6 @@ export default function ProfileScreen() {
         title: 'Invite to Prodvote',
       });
     } catch {}
-  }
-
-  function handleSignOut() {
-    signOut();
   }
 
   if (!profile) return null;
@@ -422,48 +417,13 @@ export default function ProfileScreen() {
         </>
       )}
 
-      {/* Theme Toggle */}
-      <TouchableOpacity style={s.themeToggle} onPress={toggleTheme}>
-        <Text style={{ fontSize: 20 }}>{isDark ? '☀️' : '🌙'}</Text>
-        <Text style={s.themeText}>{isDark ? 'Light Mode' : 'Dark Mode'}</Text>
-      </TouchableOpacity>
-
-      {/* About */}
-      <View style={s.aboutCard}>
-        <Text style={s.aboutTitle}>About Prodvote</Text>
-        <Text style={s.aboutDesc}>
-          Prodvote is a community-driven platform where your ideas shape the product. Submit features, vote on what matters, and watch your suggestions come to life.
-        </Text>
-        <View style={s.aboutLinks}>
-          <TouchableOpacity onPress={() => Linking.openURL('https://litsaitechnologies.com/legal/prodvote/terms')}>
-            <Text style={s.aboutLink}>Terms of Service</Text>
-          </TouchableOpacity>
-          <Text style={s.aboutDot}>·</Text>
-          <TouchableOpacity onPress={() => Linking.openURL('https://litsaitechnologies.com/legal/prodvote/privacy')}>
-            <Text style={s.aboutLink}>Privacy Policy</Text>
-          </TouchableOpacity>
-        </View>
-        <Text style={s.aboutMadeBy}>Made by LitsAI Technologies</Text>
-        <Text style={s.aboutVersion}>Version 1.0.0</Text>
-      </View>
-
-      {/* Blocked Users */}
+      {/* Settings */}
       <TouchableOpacity
         style={s.themeToggle}
-        onPress={() => router.push('/apps/blocked-users' as any)}
+        onPress={() => router.push('/apps/settings' as any)}
       >
-        <Text style={{ fontSize: 20 }}>🚫</Text>
-        <Text style={s.themeText}>Blocked Users</Text>
-      </TouchableOpacity>
-
-      {/* Sign Out */}
-      <TouchableOpacity style={s.signOutBtn} onPress={handleSignOut}>
-        <Text style={s.signOutText}>Sign Out</Text>
-      </TouchableOpacity>
-
-      {/* Delete Account (Apple 5.1.1(v)) */}
-      <TouchableOpacity style={s.deleteAccountBtn} onPress={confirmDeleteAccount}>
-        <Text style={s.deleteAccountText}>Delete Account</Text>
+        <Text style={{ fontSize: 20 }}>⚙️</Text>
+        <Text style={s.themeText}>Settings</Text>
       </TouchableOpacity>
     </ScrollView>
     </View>
