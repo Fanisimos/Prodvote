@@ -46,3 +46,9 @@ yarn-error.*
 *.tar.gz
 *.aab
 build-*
+
+# Local build artifacts / Supabase CLI state
+Prodvote.app/
+supabase/.temp/
+build-*.ipa
+build-*.tar.gz

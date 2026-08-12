@@ -16,13 +16,15 @@ CREATE TABLE IF NOT EXISTS badges (
 );
 
 -- ============ FRAMES ============
-CREATE TABLE IF NOT EXISTS frames (
+CREATE TABLE IF NOT EXISTS avatar_frames (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name VARCHAR(50) NOT NULL,
+  name VARCHAR(50) NOT NULL UNIQUE,
+  description TEXT,
   animation_type VARCHAR(30) DEFAULT 'none',
+  price INT DEFAULT 0,
   color VARCHAR(7) DEFAULT '#7c5cfc',
-  coin_cost INT DEFAULT 0,
-  is_premium BOOLEAN DEFAULT FALSE,
+  is_active BOOLEAN DEFAULT TRUE,
+  sort_order INT DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -32,7 +34,7 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS coins INT DEFAULT 0;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS bio TEXT;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS active_badge_id UUID REFERENCES badges(id) ON DELETE SET NULL;
-ALTER TABLE profiles ADD COLUMN IF NOT EXISTS active_frame_id UUID REFERENCES frames(id) ON DELETE SET NULL;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS active_frame_id UUID REFERENCES avatar_frames(id) ON DELETE SET NULL;
 
 -- ============ USER BADGES ============
 CREATE TABLE IF NOT EXISTS user_badges (
@@ -47,7 +49,7 @@ CREATE TABLE IF NOT EXISTS user_badges (
 CREATE TABLE IF NOT EXISTS user_frames (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-  frame_id UUID REFERENCES frames(id) ON DELETE CASCADE,
+  frame_id UUID REFERENCES avatar_frames(id) ON DELETE CASCADE,
   acquired_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(user_id, frame_id)
 );
@@ -71,11 +73,11 @@ CREATE TABLE IF NOT EXISTS messages (
 );
 
 -- ============ COIN TRANSACTIONS ============
-CREATE TABLE IF NOT EXISTS coin_transactions (
+CREATE TABLE IF NOT EXISTS coin_rewards (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
   amount INT NOT NULL,
-  reason TEXT NOT NULL,
+  reward_type TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -141,7 +143,7 @@ CREATE INDEX IF NOT EXISTS idx_messages_channel ON messages(channel_id, created_
 CREATE INDEX IF NOT EXISTS idx_messages_user ON messages(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_badges_user ON user_badges(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_frames_user ON user_frames(user_id);
-CREATE INDEX IF NOT EXISTS idx_coin_tx_user ON coin_transactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_coin_tx_user ON coin_rewards(user_id);
 CREATE INDEX IF NOT EXISTS idx_journal_user ON journal_entries(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_habits_user ON habits(user_id);
 CREATE INDEX IF NOT EXISTS idx_notes_user ON notes(user_id);
@@ -151,12 +153,12 @@ CREATE INDEX IF NOT EXISTS idx_kanban_cards_board ON kanban_cards(board_id);
 
 -- ============ RLS ============
 ALTER TABLE badges ENABLE ROW LEVEL SECURITY;
-ALTER TABLE frames ENABLE ROW LEVEL SECURITY;
+ALTER TABLE avatar_frames ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_badges ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_frames ENABLE ROW LEVEL SECURITY;
 ALTER TABLE channels ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
-ALTER TABLE coin_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE coin_rewards ENABLE ROW LEVEL SECURITY;
 ALTER TABLE journal_entries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE habits ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notes ENABLE ROW LEVEL SECURITY;
@@ -166,7 +168,7 @@ ALTER TABLE kanban_cards ENABLE ROW LEVEL SECURITY;
 
 -- Public read for badges, frames, channels
 CREATE POLICY "Badges viewable by everyone" ON badges FOR SELECT USING (true);
-CREATE POLICY "Frames viewable by everyone" ON frames FOR SELECT USING (true);
+CREATE POLICY "Frames viewable by everyone" ON avatar_frames FOR SELECT USING (true);
 CREATE POLICY "Channels viewable by everyone" ON channels FOR SELECT USING (true);
 
 -- Messages: anyone can read, auth can create
@@ -181,8 +183,8 @@ CREATE POLICY "Users can view own frames" ON user_frames FOR SELECT USING (auth.
 CREATE POLICY "Users can acquire frames" ON user_frames FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 -- Coin transactions: own read
-CREATE POLICY "Users can view own coins" ON coin_transactions FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "System can insert coins" ON coin_transactions FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can view own coins" ON coin_rewards FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "System can insert coins" ON coin_rewards FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 -- Personal data: own CRUD
 CREATE POLICY "Users own journal" ON journal_entries FOR ALL USING (auth.uid() = user_id);
@@ -198,7 +200,7 @@ CREATE POLICY "Users own kanban cards" ON kanban_cards FOR ALL USING (
 CREATE POLICY "Admins can manage badges" ON badges FOR ALL USING (
   EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_admin = true)
 );
-CREATE POLICY "Admins can manage frames" ON frames FOR ALL USING (
+CREATE POLICY "Admins can manage frames" ON avatar_frames FOR ALL USING (
   EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_admin = true)
 );
 CREATE POLICY "Admins can manage channels" ON channels FOR ALL USING (
@@ -226,16 +228,7 @@ INSERT INTO badges (name, emoji, color, description, coin_cost) VALUES
   ('Streak Master', '⚡', '#ef4444', '30-day activity streak', 1500)
 ON CONFLICT DO NOTHING;
 
--- Starter frames
-INSERT INTO frames (name, animation_type, color, coin_cost) VALUES
-  ('Default', 'none', '#888888', 0),
-  ('Purple Glow', 'glow', '#7c5cfc', 500),
-  ('Fire Ring', 'pulse', '#ff4d6a', 1000),
-  ('Gold Crown', 'shimmer', '#fbbf24', 2000),
-  ('Neon Blue', 'glow', '#4dc9f6', 750),
-  ('Emerald', 'pulse', '#34d399', 750),
-  ('Rainbow', 'rotate', '#ff6b35', 3000)
-ON CONFLICT DO NOTHING;
+-- Starter frames are seeded by 006_premium_frames.sql with the correct schema.
 
 -- Give starting coins to new users (update the handle_new_user function)
 CREATE OR REPLACE FUNCTION handle_new_user()
@@ -244,8 +237,8 @@ BEGIN
   INSERT INTO profiles (id, username, coins)
   VALUES (NEW.id, COALESCE(NEW.raw_user_meta_data->>'username', 'user_' || LEFT(NEW.id::text, 8)), 1000);
 
-  INSERT INTO coin_transactions (user_id, amount, reason)
-  VALUES (NEW.id, 1000, 'Welcome bonus! Starting coins added to your account.');
+  INSERT INTO coin_rewards (user_id, amount, reward_type)
+  VALUES (NEW.id, 1000, 'welcome_bonus');
 
   RETURN NEW;
 END;

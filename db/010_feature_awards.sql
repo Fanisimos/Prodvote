@@ -55,5 +55,5 @@ SELECT
   at.color,
   COUNT(*) AS count
 FROM feature_awards fa
-JOIN award_types at ON fa.badge_id = at.id
+JOIN award_types at ON fa.award_type_id = at.id
 GROUP BY fa.feature_id, at.id, at.name, at.emoji, at.animation, at.color;

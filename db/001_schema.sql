@@ -45,6 +45,7 @@ CREATE TABLE features (
   vote_count INT DEFAULT 0,
   comment_count INT DEFAULT 0,
   is_boosted BOOLEAN DEFAULT FALSE,
+  is_priority BOOLEAN DEFAULT FALSE,
   dev_response TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   shipped_at TIMESTAMPTZ

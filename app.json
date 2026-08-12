@@ -2,7 +2,7 @@
   "expo": {
     "name": "Prodvote",
     "slug": "Prodvote",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "prodvote",
@@ -22,7 +22,7 @@
         "NSCalendarsFullAccessUsageDescription": "Prodvote uses your calendar to sync plan due dates and set reminders so you never miss a deadline.",
         "NSCalendarsWriteOnlyAccessUsageDescription": "Prodvote uses your calendar to add plan due dates and reminders."
       },
-      "buildNumber": "2"
+      "buildNumber": "5"
     },
     "android": {
       "package": "com.prodvote.app",
