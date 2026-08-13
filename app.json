@@ -22,7 +22,7 @@
         "NSCalendarsFullAccessUsageDescription": "Prodvote uses your calendar to sync plan due dates and set reminders so you never miss a deadline.",
         "NSCalendarsWriteOnlyAccessUsageDescription": "Prodvote uses your calendar to add plan due dates and reminders."
       },
-      "buildNumber": "5"
+      "buildNumber": "7"
     },
     "android": {
       "package": "com.prodvote.app",
