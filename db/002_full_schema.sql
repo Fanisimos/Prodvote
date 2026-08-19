@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS badges (
   emoji VARCHAR(10) NOT NULL,
   color VARCHAR(7) DEFAULT '#7c5cfc',
   description TEXT,
-  coin_cost INT DEFAULT 0,
+  price INT DEFAULT 0,
   is_premium BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS user_badges (
 );
 
 -- ============ USER FRAMES ============
-CREATE TABLE IF NOT EXISTS user_frames (
+CREATE TABLE IF NOT EXISTS user_avatar_frames (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
   frame_id UUID REFERENCES avatar_frames(id) ON DELETE CASCADE,
@@ -142,7 +142,7 @@ CREATE TABLE IF NOT EXISTS kanban_cards (
 CREATE INDEX IF NOT EXISTS idx_messages_channel ON messages(channel_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_messages_user ON messages(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_badges_user ON user_badges(user_id);
-CREATE INDEX IF NOT EXISTS idx_user_frames_user ON user_frames(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_avatar_frames_user ON user_avatar_frames(user_id);
 CREATE INDEX IF NOT EXISTS idx_coin_tx_user ON coin_rewards(user_id);
 CREATE INDEX IF NOT EXISTS idx_journal_user ON journal_entries(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_habits_user ON habits(user_id);
@@ -155,7 +155,7 @@ CREATE INDEX IF NOT EXISTS idx_kanban_cards_board ON kanban_cards(board_id);
 ALTER TABLE badges ENABLE ROW LEVEL SECURITY;
 ALTER TABLE avatar_frames ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_badges ENABLE ROW LEVEL SECURITY;
-ALTER TABLE user_frames ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_avatar_frames ENABLE ROW LEVEL SECURITY;
 ALTER TABLE channels ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE coin_rewards ENABLE ROW LEVEL SECURITY;
@@ -179,8 +179,8 @@ CREATE POLICY "Users can delete own messages" ON messages FOR DELETE USING (auth
 -- User badges/frames: own read/write
 CREATE POLICY "Users can view own badges" ON user_badges FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can acquire badges" ON user_badges FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can view own frames" ON user_frames FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can acquire frames" ON user_frames FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can view own frames" ON user_avatar_frames FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can acquire frames" ON user_avatar_frames FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 -- Coin transactions: own read
 CREATE POLICY "Users can view own coins" ON coin_rewards FOR SELECT USING (auth.uid() = user_id);
@@ -216,7 +216,7 @@ INSERT INTO channels (name, description, is_default) VALUES
 ON CONFLICT DO NOTHING;
 
 -- Starter badges
-INSERT INTO badges (name, emoji, color, description, coin_cost) VALUES
+INSERT INTO badges (name, emoji, color, description, price) VALUES
   ('Early Adopter', '🚀', '#ff4d6a', 'One of the first Prodvote users', 0),
   ('Bug Hunter', '🐛', '#34d399', 'Found and reported bugs', 500),
   ('Top Voter', '🗳️', '#7c5cfc', 'Voted on 50+ features', 1000),
